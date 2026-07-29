@@ -502,7 +502,8 @@ class _ControlTabState extends State<ControlTab>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final dp = context.read<DataProvider>();
-        if (dp.activeTestName == 'Basınçlı Su Testi') {
+        if (dp.activeTestName == 'Basınçlı Su Testi' &&
+            !dp.isAppInBackground) {
           dp.stopTest();
         }
       }

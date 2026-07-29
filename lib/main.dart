@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vtm_tablet/providers/alert_provider.dart';
@@ -18,6 +19,9 @@ import 'package:vtm_tablet/ui/tabs/report_tab.dart';
 // import 'ui/tabs/debug_view_tab.dart';
 import 'package:flutter/services.dart';
 import 'package:vtm_tablet/providers/config_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:vtm_tablet/services/update_service.dart';
+import 'package:vtm_tablet/ui/widgets/update_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -123,8 +127,11 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _updateTimer;
+  bool _isChecking = false;
 
   late PageController _pageController;
   final List<String> _pageTitles = [
@@ -160,21 +167,80 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Lifecycle observer
     _pageController = PageController();
-    //WakelockPlus.enable();
-    //context.read<DataProvider>().startUdpListener(port: 5005);
-    // Artık provider'lar yerine merkezi servisi başlatıyoruz
+    // Merkezi UDP servisini başlatıyoruz
     context.read<UdpService>().startListener();
-    // DataProvider dinlemeye otomatik başlayacak
     context.read<DataProvider>().startListener();
+
+    // SADECE WiFi bağlantısı değişince güncelleme kontrolü yap
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
+      if (results.contains(ConnectivityResult.wifi)) {
+        // İnternet tam hazır olsun diye 3 saniye bekle
+        Future.delayed(const Duration(seconds: 3), _checkForUpdate);
+      }
+    });
+    // Uygulama açılışında widget hazır olduktan sonra kontrol et
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
+    // Her 5 dakikada bir periyodik kontrol (bağlantı değişmese bile)
+    _updateTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _checkForUpdate(),
+    );
+  }
+
+  Future<void> _checkForUpdate() async {
+    if (_isChecking) return;
+    
+    // YENİ: Kontrol öncesi anlık olarak sadece WiFi'de miyiz diye bak
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (!connectivityResult.contains(ConnectivityResult.wifi)) {
+      return; // WiFi yoksa (örneğin sadece SIM kart varsa) sessizce iptal et
+    }
+
+    _isChecking = true;
+    try {
+      final result = await UpdateService.checkUpdate();
+      if (result.available && mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => UpdateDialog(remoteBuildNumber: result.remoteBuild),
+        );
+      }
+    } catch (_) {
+      // Bağlantı yoksa veya kontrol başarısız olursa sessizce geç
+    } finally {
+      if (mounted) {
+        _isChecking = false;
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Lifecycle observer kaldır
+    _connectivitySubscription?.cancel();
+    _updateTimer?.cancel();
     _pageController.dispose();
     //context.read<DataProvider>().stopUdpListener();
     //WakelockPlus.disable();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final dp = context.read<DataProvider>();
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      // Uygulama arka plana geçti
+      dp.setAppBackground(true);
+    } else if (state == AppLifecycleState.resumed) {
+      // Uygulama ön plana döndü
+      dp.setAppBackground(false);
+    }
   }
 
   // Çıkış onayı diyaloğunu gösteren metot

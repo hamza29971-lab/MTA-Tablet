@@ -165,6 +165,13 @@ class DataProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Uygulama arka planda mı? (arka plandaysa testleri durdurma)
+  bool _isAppInBackground = false;
+  bool get isAppInBackground => _isAppInBackground;
+  void setAppBackground(bool value) {
+    _isAppInBackground = value;
+  }
+
   bool isAnyOtherTestRunning(String myTestName) {
     return _activeTestName != null && _activeTestName != myTestName;
   }

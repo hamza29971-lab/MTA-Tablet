@@ -77,7 +77,8 @@ class _UnpressurizedWaterTestTabState extends State<UnpressurizedWaterTestTab> w
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final dp = context.read<DataProvider>();
-        if (dp.activeTestName == 'Basınçsız Su Testi') {
+        if (dp.activeTestName == 'Basınçsız Su Testi' &&
+            !dp.isAppInBackground) {
           dp.stopTest();
         }
       }

@@ -35,6 +35,7 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
 
   final TextEditingController _toplamDerinlikCtrl = TextEditingController();
   String _yasMi = 'Hayır';
+  String _sptOrnekleyici = 'İç Tüplü';
   final TextEditingController _yassCtrl = TextEditingController();
   
   bool _isRunning = false;
@@ -72,7 +73,8 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
     // Uygulamadan/sayfadan çıkılırken testi serbest bırak (eğer bu testse)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        if (_dataProvider.activeTestName == 'SPT Testi') {
+        if (_dataProvider.activeTestName == 'SPT Testi' &&
+            !_dataProvider.isAppInBackground) {
           _dataProvider.stopTest();
         }
       }
@@ -91,6 +93,7 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
       "DeneyNo": r.deneyNo,
       "VurusSayisi": r.vurusSayisi,
       "ToplamDerinlik_m": r.toplamDerinlik,
+      "SPT_Ornekleyicisi": _sptOrnekleyici,
       "YAS_VarMi": _yasMi,
       "YASS_m": _yasMi == 'Evet' ? (double.tryParse(_yassCtrl.text) ?? 0.0) : 0.0,
       "DeneyDerinligi_cm": r.deneyDerinligiCm,
@@ -125,6 +128,7 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
       "MesajTipi": "Ozet",
       "BoxID": dp.deviceData.boxId,
       "ToplamDerinlik_m": double.tryParse(_toplamDerinlikCtrl.text) ?? 0.0,
+      "SPT_Ornekleyicisi": _sptOrnekleyici,
       "YAS_VarMi": _yasMi,
       "YASS_m": _yasMi == 'Evet' ? (double.tryParse(_yassCtrl.text) ?? 0.0) : 0.0,
       "Adimlar": adimlar
@@ -388,6 +392,8 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
                 child: Row(
                   children: [
                     Expanded(child: _buildTextField('Derinlik (m)', _toplamDerinlikCtrl, isNumber: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildDropdown('SPT Örnekleyicisi', _sptOrnekleyici, ['İç Tüplü', 'İç Tüpsüz'], (val) => setState(() => _sptOrnekleyici = val!))),
                     const SizedBox(width: 12),
                     Expanded(child: _buildDropdown('YAS', _yasMi, ['Evet', 'Hayır'], (val) => setState(() => _yasMi = val!))),
                     const SizedBox(width: 12),
