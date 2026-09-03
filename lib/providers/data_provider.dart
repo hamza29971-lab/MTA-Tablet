@@ -27,7 +27,7 @@
 //   // Dinleyiciyi başlatma metodu değişti
 //   void startListener() {
 //     if (_isListening) return;
-    
+
 //     // Merkezi servisten gelen mesajları dinlemeye başla
 //     _udpSubscription = _udpService.messageStream.listen(_handleIncomingMessage);
 //     _isListening = true;
@@ -119,27 +119,34 @@ class DataProvider with ChangeNotifier {
   String? _operatorName;
   String? _registrationNo;
   String? _wellNo;
-  bool _isSystemLocked = true; // Added for start screen locking
+  String? _teamName;
+  String? _bolgeAdi;
+  double? _teslimAlinanMetraj;
+  bool _isSystemLocked = false; // System is never locked
 
   String? get operatorName => _operatorName;
   String? get registrationNo => _registrationNo;
   String? get wellNo => _wellNo;
+  String? get teamName => _teamName;
+  String? get bolgeAdi => _bolgeAdi;
+  double? get teslimAlinanMetraj => _teslimAlinanMetraj;
   bool get isSystemLocked => _isSystemLocked;
 
-  void setOperatorInfo(String name, String regNo, String well) {
-    if (_isSystemLocked) {
-      // Sabah raporuydu (Kilitliydi, şimdi açılıyor)
-      _operatorName = name;
-      _registrationNo = regNo;
-      _wellNo = well;
-      _isSystemLocked = false;
-    } else {
-      // Akşam raporuydu (Açıktı, şimdi kilitleniyor)
-      _operatorName = null;
-      _registrationNo = null;
-      _wellNo = null;
-      _isSystemLocked = true;
-    }
+  void setOperatorInfo(
+    String name,
+    String regNo,
+    String well, {
+    String teamName = '',
+    String bolgeAdi = '',
+    double teslimAlinanMetraj = 0.0,
+  }) {
+    _operatorName = name;
+    _registrationNo = regNo;
+    _wellNo = well;
+    _teamName = teamName;
+    _bolgeAdi = bolgeAdi;
+    _teslimAlinanMetraj = teslimAlinanMetraj;
+    _isSystemLocked = false;
     notifyListeners();
   }
 
@@ -147,7 +154,10 @@ class DataProvider with ChangeNotifier {
     _operatorName = null;
     _registrationNo = null;
     _wellNo = null;
-    _isSystemLocked = true;
+    _teamName = null;
+    _bolgeAdi = null;
+    _teslimAlinanMetraj = null;
+    _isSystemLocked = false;
     notifyListeners();
   }
 
@@ -181,12 +191,12 @@ class DataProvider with ChangeNotifier {
 
   void startListener() {
     if (_isListening) return;
-    
+
     _udpSubscription = _udpService.messageStream.listen(_handleIncomingMessage);
     _isListening = true;
-    
+
     // ZAMANLAYICIYI BURADA BAŞLATMIYORUZ. Sadece ilk mesaj geldiğinde başlayacak.
-    
+
     print("✅ DataProvider, merkezi dinleyiciye abone oldu.");
 
     // Başlangıç durumunun kesin olarak 'disconnected' olduğunu arayüze bildir.

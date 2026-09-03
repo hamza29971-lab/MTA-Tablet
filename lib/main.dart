@@ -6,15 +6,17 @@ import 'package:vtm_tablet/providers/data_provider.dart';
 import 'package:vtm_tablet/providers/report_provider.dart';
 import 'package:vtm_tablet/providers/wakelock_provider.dart';
 import 'package:vtm_tablet/services/udp_service.dart';
+import 'package:vtm_tablet/services/mqtt_service.dart';
 import 'package:vtm_tablet/ui/tabs/analog_pages.dart';
 import 'package:vtm_tablet/ui/tabs/can_bus_tab.dart';
 import 'package:vtm_tablet/ui/tabs/config_tab.dart';
 import 'package:vtm_tablet/ui/tabs/digital_tab.dart';
+import 'package:vtm_tablet/ui/tabs/fault_report_tab.dart';
+import 'package:vtm_tablet/ui/tabs/core_log_tab.dart';
+import 'package:vtm_tablet/ui/tabs/karotiyer_tab.dart';
+import 'package:vtm_tablet/ui/tabs/shift_report_tab.dart';
 import 'package:vtm_tablet/ui/tabs/dtc_tab.dart';
-import 'package:vtm_tablet/ui/tabs/spt_tab.dart';
 import 'package:vtm_tablet/ui/tabs/home_tab.dart';
-import 'package:vtm_tablet/ui/tabs/control_tab.dart';
-import 'package:vtm_tablet/ui/tabs/unpressurized_water_test_tab.dart';
 import 'package:vtm_tablet/ui/tabs/report_tab.dart';
 // import 'ui/tabs/debug_view_tab.dart';
 import 'package:flutter/services.dart';
@@ -47,15 +49,31 @@ Future<void> main() async {
           create: (_) => UdpService(),
           dispose: (_, service) => service.dispose(),
         ),
+        // 2. MQTT Servisi (İnternetsiz çalıştığı için devredışı bırakıldı)
+        Provider<MqttService>(
+          create: (_) {
+            final mqtt = MqttService();
+            // mqtt.connect(); // arka planda bağlanmasını kapattık
+            return mqtt;
+          },
+          lazy: true, // Uygulama açılır açılmaz bağlanmasın
+          dispose: (_, service) => service.disconnect(),
+        ),
         // 2. Diğer Provider'ları bu servisi kullanarak oluşturuyoruz.
         ChangeNotifierProvider.value(value: configProvider),
         ChangeNotifierProxyProvider<UdpService, DataProvider>(
           create: (context) => DataProvider(context.read<UdpService>()),
           update: (_, service, previous) => DataProvider(service),
         ),
-        ChangeNotifierProxyProvider<UdpService, ReportProvider>(
-          create: (context) => ReportProvider(context.read<UdpService>()), 
-          update: (_, service, previous) => ReportProvider(service),
+        ChangeNotifierProxyProvider2<UdpService, MqttService, ReportProvider>(
+          create: (context) => ReportProvider(
+            context.read<UdpService>(),
+            context.read<MqttService>(),
+          ),
+          update: (context, udpService, mqttService, previous) => ReportProvider(
+            udpService,
+            mqttService,
+          ),
         ),
         ChangeNotifierProvider<WakelockProvider>(
           create: (_) => WakelockProvider(),
@@ -141,9 +159,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     'Makine Verileri 2/3',
     'Makine Verileri 3/3',
     'Motor Verileri',
-    'BASINÇLI SU TESTİ',
-    'BASINÇSIZ SU TESTİ',
-    'SPT TEST',
+    'Arıza Raporu',
+    'Karot Bilgileri',
+    'Karotiyer Bilgileri',
+    'Vardiya Raporu',
     'Hata Kodları (DTC)',
     'Konfigürasyon',
     // 'Debug Ekranı',
@@ -156,9 +175,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     const AnalogTabPage2(),
     const DigitalTab(),
     const CanBusTab(),
-    const ControlTab(),
-    const UnpressurizedWaterTestTab(),
-    const SptTab(),
+    const FaultReportTab(),
+    const CoreLogTab(),
+    const KarotiyerTab(),
+    const ShiftReportTab(),
     const DtcTab(),
     const ConfigTab(),
     // const DebugViewTab(),
@@ -251,17 +271,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           false, // Kullanıcının dışarı tıklayarak kapatmasını engelle
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Uygulamadan Çık'),
+          title: const Text('Uygulamadan Çık', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           content: const SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('Uygulamadan çıkmak istediğinize emin misiniz?'),
+                Text('Uygulamadan çıkmak istediğinize emin misiniz?', style: TextStyle(fontSize: 24)),
               ],
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('İptal'),
+              child: const Text('İptal', style: TextStyle(fontSize: 22)),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -269,7 +289,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             TextButton(
               child: const Text(
                 'Çıkış Yap',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Colors.red, fontSize: 22),
               ),
               onPressed: () {
                 // Uygulamayı kapat
@@ -294,10 +314,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               Icon(
                 level == PopUpAlertLevel.critical ? Icons.error : Icons.warning,
                 color: level == PopUpAlertLevel.critical ? Colors.red : Colors.orange,
-                size: 32,
+                size: 52,
               ),
               const SizedBox(width: 10),
-              Text(level == PopUpAlertLevel.critical ? 'KRİTİK ALARM' : 'UYARI'),
+              Text(
+                level == PopUpAlertLevel.critical ? 'KRİTİK ALARM' : 'UYARI',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           content: Text(popupData.message, style: const TextStyle(fontSize: 32)),
@@ -341,7 +364,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           child: Align(
             //alignment: Alignment.centerLeft,
             child: Text(
-              'DSİ TEMEL SONDAJ TAKİP PROGRAMI',
+              'MTA TEMEL SONDAJ TAKİP PROGRAMI',
               style: TextStyle(
                 color: Color.fromARGB(255, 4, 100, 100),
                 fontWeight: FontWeight.bold,
@@ -464,6 +487,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       setState(() {
                         _selectedIndex = index;
                       });
+                      FocusManager.instance.primaryFocus?.unfocus();
                     },
                   ),
                 ),

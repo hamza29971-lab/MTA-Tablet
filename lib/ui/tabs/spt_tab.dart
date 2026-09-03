@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/data_provider.dart';
+import '../../models/report_data.dart';
+import '../widgets/industrial_text_field.dart';
 import '../../utils/app_dialogs.dart';
 
 class SptRecord {
@@ -351,9 +352,12 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
     
     final bool isLocked = dataProvider.isSystemLocked;
     
-    return Stack(
-      children: [
-        AbsorbPointer(
+    return SingleChildScrollView(
+      child: SizedBox(
+        height: 750, // Sabit yükseklik, klavye açılınca daralmaz, kaydırılabilir olur
+        child: Stack(
+          children: [
+            AbsorbPointer(
           absorbing: isLocked,
           child: Opacity(
             opacity: isLocked ? 0.4 : 1.0,
@@ -506,7 +510,7 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
             ),
           ),
       ], // ends Stack children
-    ); // ends Stack
+    ))); // ends SingleChildScrollView and SizedBox and Stack
   }
 
   Widget _buildInfoCard(String title, Widget content, {Color? titleColor}) {
@@ -570,15 +574,10 @@ class _SptTabState extends State<SptTab> with AutomaticKeepAliveClientMixin {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false}) {
-    return TextFormField(
+    return IndustrialTextField(
+      label: label,
       controller: controller,
-      keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        fillColor: Colors.transparent,
-        filled: true,
-      ),
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
     );
   }
 

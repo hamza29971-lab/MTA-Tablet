@@ -50,6 +50,7 @@ dependencies:
   http: ^1.3.0                # GitHub API'ye HTTP isteği gönderir
   open_file: ^3.3.2           # İndirilen APK'yı açar
   path_provider: ^2.1.4       # Cihaz depolama yolunu bulur
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:

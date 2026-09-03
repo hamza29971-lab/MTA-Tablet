@@ -8,7 +8,10 @@ class ReportData {
   final String operatorNumber;
   final String teamName;
   final String faultText;
-  final double faultMeter; 
+  final double faultMeter;
+  // Sadece Arıza Raporu (report_tab) için opsiyonel ekstra alanlar
+  final String? bolgeAdi;
+  final double? teslimAlinanMetraj;
 
   ReportData({
     required this.operatorName,
@@ -17,18 +20,34 @@ class ReportData {
     required this.teamName,
     required this.faultText,
     required this.faultMeter,
+    this.bolgeAdi,
+    this.teslimAlinanMetraj,
   });
 
-  // Nesneyi JSON string'ine çevirir
-  String toJson() {
-    return jsonEncode({
+  // Nesneyi Map'e çevirir (MQTT için kullanılır)
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
       'operator_name': operatorName,
       'kuyu_name': kuyuName,
       'operator_number': operatorNumber,
       'team_name': teamName,
       'fault_text': faultText,
-      'fault_meter':faultMeter
-    });
+    };
+    // "Bölge Adı" → fault_text'in hemen yanına (altına)
+    if (bolgeAdi != null) {
+      map['Bölge Adı'] = bolgeAdi;
+    }
+    map['fault_meter'] = faultMeter;
+    // "Teslim Alınan Metraj" → fault_meter'ın hemen yanına (altına)
+    if (teslimAlinanMetraj != null) {
+      map['Teslim Alınan Metraj'] = teslimAlinanMetraj;
+    }
+    return map;
+  }
+
+  // Nesneyi JSON string'ine çevirir (UDP için kullanılır)
+  String toJson() {
+    return jsonEncode(toMap());
   }
 }
 
@@ -45,3 +64,4 @@ class AckData {
     );
   }
 }
+

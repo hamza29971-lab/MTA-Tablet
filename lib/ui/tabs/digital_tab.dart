@@ -407,7 +407,7 @@ class DigitalTab extends StatelessWidget {
             mainAxisSpacing: mainAxisSpacing,
             childAspectRatio: aspectRatio,
           ),
-          itemCount: 2,
+          itemCount: 1,
           itemBuilder: (context, index) {
             final String gaugeId = 'aux_$index';
             final gaugeConfig = config.gaugeConfigs[gaugeId];

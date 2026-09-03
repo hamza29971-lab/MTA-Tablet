@@ -623,24 +623,24 @@ class _ReportTabState extends State<ReportTab> {
       }
     });
     // Raporun başarı durumunu dinleyerek operatör bilgilerini güncelle
-    context.read<ReportProvider>().addListener(_onReportStatusChanged);
+    // context.read<ReportProvider>().addListener(_onReportStatusChanged);
   }
 
-  void _onReportStatusChanged() {
-    final provider = context.read<ReportProvider>();
-    if (provider.status == ReportStatus.success) {
-      final operatorName = _operatorNameController.text;
-      final kuyuName = _kuyuNameController.text;
-      final operatorNumber = _operatorNumberController.text;
-      
-      // Ana sisteme operatör bilgilerini kaydet (testlerin kilidini açar)
-      context.read<DataProvider>().setOperatorInfo(operatorName, operatorNumber, kuyuName);
-    }
-  }
+  // void _onReportStatusChanged() {
+  //   final provider = context.read<ReportProvider>();
+  //   if (provider.status == ReportStatus.success) {
+  //     final operatorName = _operatorNameController.text;
+  //     final kuyuName = _kuyuNameController.text;
+  //     final operatorNumber = _operatorNumberController.text;
+  //     
+  //     // Ana sisteme operatör bilgilerini kaydet (testlerin kilidini açar)
+  //     context.read<DataProvider>().setOperatorInfo(operatorName, operatorNumber, kuyuName);
+  //   }
+  // }
 
   @override
   void dispose() {
-    context.read<ReportProvider>().removeListener(_onReportStatusChanged);
+    // context.read<ReportProvider>().removeListener(_onReportStatusChanged);
     _operatorNameController.dispose();
     _kuyuNameController.dispose();
     _operatorNumberController.dispose();
@@ -650,23 +650,16 @@ class _ReportTabState extends State<ReportTab> {
   }
 
   void _clearFormAndResetStatus() {
-    // Tüm metin alanlarını temizle
+    // Tüm alanları temizle
     _operatorNameController.clear();
     _kuyuNameController.clear();
     _operatorNumberController.clear();
     _faultTextController.clear();
     _faultMeterController.clear();
-    
-    // Dropdown seçimini sıfırla
     setState(() {
       _selectedTeam = null;
     });
-    
-    // Provider'daki durumu başlangıç haline getir
     context.read<ReportProvider>().resetStatus();
-
-    // Sadece formu temizliyoruz, Kilit durumunu (isSystemLocked) burada DEĞİŞTİRMİYORUZ.
-    // Kilit durumu sadece rapor başarıyla gönderildiğinde toggle edilir.
   }
 
   void _submitReport() {
@@ -679,30 +672,108 @@ class _ReportTabState extends State<ReportTab> {
 
       // fault_text'i JSON formatında sar (sunucu formatıyla uyumluluk için)
       final faultTextJson = jsonEncode({
-        'TestTipi': 'Arıza Raporu',
-        'Aciklama': _faultTextController.text,
+        'Test Tipi': 'Rapor Gönder',
+        'Arıza Açıklaması': _faultTextController.text,
       });
 
+      final faultMeterValue = double.tryParse(_faultMeterController.text.replaceAll(',', '.')) ?? 0.0;
+      
       final reportData = ReportData(
         operatorName: operatorName,
         kuyuName: kuyuName,
         operatorNumber: operatorNumber,
         teamName: teamName,
         faultText: faultTextJson,
-        faultMeter: double.parse(_faultMeterController.text),
+        faultMeter: faultMeterValue,
+        // Sadece Arıza Raporunda: fault_text'in yanına "Bölge Adı", fault_meter'ın yanına "Teslim Alınan Metraj"
+        bolgeAdi: _faultTextController.text,
+        teslimAlinanMetraj: faultMeterValue,
       );
+      
+      // Operatör bilgilerini DataProvider'a kaydet (Karot, Vardiya ve Arıza sekmeleri buradan okur)
+      context.read<DataProvider>().setOperatorInfo(
+        operatorName,
+        operatorNumber,
+        kuyuName,
+        teamName: teamName,
+        bolgeAdi: _faultTextController.text,
+        teslimAlinanMetraj: faultMeterValue,
+      );
+      
       context.read<ReportProvider>().sendReport(reportData);
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return Consumer<ReportProvider>(
+            builder: (context, provider, child) {
+              if (provider.status == ReportStatus.initial) {
+                return const SizedBox.shrink();
+              }
+
+              if (provider.status == ReportStatus.sending) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  content: const SizedBox(
+                    width: 400,
+                    height: 150,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF046464)),
+                        SizedBox(height: 24),
+                        Text('Gönderiliyor, lütfen bekleyin...', style: TextStyle(fontSize: 24)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              bool isSuccess = provider.status == ReportStatus.success;
+              IconData icon = isSuccess ? Icons.check_circle : Icons.error;
+              Color color = isSuccess ? Colors.green : Colors.red;
+              String title = isSuccess ? 'Başarılı' : 'Hata';
+              String message = isSuccess ? 'Rapor başarıyla gönderildi.' : provider.ackMessage;
+
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: Row(children: [
+                  Icon(icon, color: color, size: 64),
+                  const SizedBox(width: 12),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 34)),
+                ]),
+                content: SizedBox(
+                  width: 800,
+                  child: Text(message, style: const TextStyle(fontSize: 30)),
+                ),
+                actions: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF046464),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _clearFormAndResetStatus();
+                    },
+                    child: const Text('Tamam', style: TextStyle(fontSize: 28)),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final reportProvider = context.watch<ReportProvider>();
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
           // ─── HOŞGELDİNİZ HEADER ────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
@@ -716,12 +787,12 @@ class _ReportTabState extends State<ReportTab> {
                 end: Alignment.bottomRight,
               ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+            padding: const EdgeInsets.only(top: 24, bottom: 8, left: 32, right: 32),
             child: Column(
               children: [
-                // 3 Logo yan yana
+                // 2 Logo yan yana (DTS ve MTA)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // DTS Logo
                     Container(
@@ -746,7 +817,8 @@ class _ReportTabState extends State<ReportTab> {
                         ),
                       ),
                     ),
-                    // DSİ Logo - beyaz arka planlı yuvarlak
+                    const SizedBox(width: 40),
+                    // MTA Logo
                     Container(
                       width: 160,
                       height: 85,
@@ -764,30 +836,7 @@ class _ReportTabState extends State<ReportTab> {
                       padding: const EdgeInsets.all(8),
                       child: Center(
                         child: Image.asset(
-                          'assets/logos/dsi_logo.jpg',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    // Jeoteknik / Sondaj Logo
-                    Container(
-                      width: 160,
-                      height: 85,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(8),
-                      child: Center(
-                        child: Image.asset(
-                          'assets/logos/sondaj_logo.jpg',
+                          'assets/logos/mta_logo.jpg',
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -797,7 +846,7 @@ class _ReportTabState extends State<ReportTab> {
                 const SizedBox(height: 20),
                 // Ana başlık
                 const Text(
-                  'DSİ TEMEL SONDAJ TAKİP PROGRAMI',
+                  'MTA TEMEL SONDAJ TAKİP PROGRAMI',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -823,92 +872,92 @@ class _ReportTabState extends State<ReportTab> {
           ),
 
           // ─── RAPOR FORMU ────────────────────────────────────────────────
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildTextField(_operatorNameController, 'Operatör İsmi'),
-                      const SizedBox(height: 16),
-                      _buildTextField(_kuyuNameController, 'Kuyu Adı'),
-                      const SizedBox(height: 16),
-                      _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _selectedTeam,
-                        decoration: const InputDecoration(
-                          labelText: 'Takım İsmi',
-                          border: OutlineInputBorder(),
-                        ),
-                        hint: const Text('Bir takım seçin'),
-                        items: _teamOptions.map((String team) {
-                          return DropdownMenuItem<String>(
-                            value: team,
-                            child: Text(team),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedTeam = newValue;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Lütfen bir takım seçin';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      // ✅ DEĞİŞİKLİK: 'required: false' parametresi eklendi ve etiket güncellendi.
-                      _buildTextField(_faultTextController, 'Arıza Açıklaması (Varsa)', maxLines: 5, required: false),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _faultMeterController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Metraj',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Bu alan boş bırakılamaz';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      if (reportProvider.status == ReportStatus.initial)
-                        ElevatedButton(
-                          onPressed: _submitReport,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: const Color(0xFF046464),
-                            foregroundColor: Colors.white,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 10.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildTextField(_operatorNameController, 'Operatör İsmi'),
+                          const SizedBox(height: 10),
+                          _buildTextField(_kuyuNameController, 'Kuyu Adı'),
+                          const SizedBox(height: 10),
+                          _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
+                          const SizedBox(height: 10),
+                          _buildTextField(_faultTextController, 'Bölge Adı', required: false),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            value: _selectedTeam,
+                            decoration: const InputDecoration(
+                              labelText: 'Takım İsmi',
+                              border: OutlineInputBorder(),
+                            ),
+                            hint: const Text('Bir takım seçin'),
+                            items: _teamOptions.map((String team) {
+                              return DropdownMenuItem<String>(
+                                value: team,
+                                child: Text(team),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedTeam = newValue;
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Lütfen bir takım seçin';
+                              }
+                              return null;
+                            },
                           ),
-                          child: const Text(
-                            'RAPORU GÖNDER',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: _faultMeterController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Teslim Alınan Metraj',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Bu alan boş bırakılamaz';
+                              }
+                              if (double.tryParse(value) == null) {
+                                return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
+                              }
+                              return null;
+                            },
                           ),
-                        )
-                      else
-                        _buildStatusIndicator(reportProvider),
-                    ],
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: _submitReport,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: const Color(0xFF046464),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text(
+                              'RAPORU GÖNDER',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ],
-      ),
     );
   }
 

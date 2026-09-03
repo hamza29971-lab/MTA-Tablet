@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/report_data.dart';
 import '../services/udp_service.dart';
+import '../services/mqtt_service.dart';
 
 enum ReportStatus { initial, sending, success, error, timeout }
 
 class ReportProvider with ChangeNotifier {
   final UdpService _udpService;
+  final MqttService _mqttService;
   StreamSubscription? _udpSubscription;
 
   ReportStatus _status = ReportStatus.initial;
@@ -18,7 +20,7 @@ class ReportProvider with ChangeNotifier {
   ReportStatus get status => _status;
   String get ackMessage => _ackMessage;
 
-  ReportProvider(this._udpService) {
+  ReportProvider(this._udpService, this._mqttService) {
     // Merkezi UDP servisinden gelen mesajları dinle
     _udpSubscription = _udpService.messageStream.listen(_handleIncomingMessage);
   }
@@ -45,13 +47,19 @@ class ReportProvider with ChangeNotifier {
     }
   }
 
-  // Rapor gönderme işlemini başlatan metot
+  // Rapor gönderme işlemini başlatan metot (ReportData modeli ile)
   Future<void> sendReport(ReportData report) async {
+    await _sendRawJson(report.toJson());
+  }
+
+  // Genel JSON verisi gönderme ve ACK bekleme metodu (Karot, Vardiya vs. için)
+  Future<void> _sendRawJson(String jsonPayload) async {
     _status = ReportStatus.sending;
     _ackMessage = '';
     notifyListeners();
 
-    await _udpService.sendReport(report.toJson());
+    // UDP ile kutuya (VTM-16) gönder ve onay bekle
+    await _udpService.sendReport(jsonPayload);
 
     // 10 saniye içinde onay gelmezse zaman aşımına uğrat
     _ackTimer = Timer(const Duration(seconds: 10), () {
