@@ -19,7 +19,9 @@ class FaultReportTab extends StatefulWidget {
   State<FaultReportTab> createState() => _FaultReportTabState();
 }
 
-class _FaultReportTabState extends State<FaultReportTab> {
+class _FaultReportTabState extends State<FaultReportTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _images = [];
   final TextEditingController _descController = TextEditingController();
@@ -155,6 +157,7 @@ class _FaultReportTabState extends State<FaultReportTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LockedTabWrapper(
       child: Container(
         color: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan

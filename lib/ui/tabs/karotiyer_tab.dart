@@ -17,7 +17,9 @@ class KarotiyerTab extends StatefulWidget {
   State<KarotiyerTab> createState() => _KarotiyerTabState();
 }
 
-class _KarotiyerTabState extends State<KarotiyerTab> {
+class _KarotiyerTabState extends State<KarotiyerTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final TextEditingController _matkapController = TextEditingController();
   final TextEditingController _portkronController = TextEditingController();
   final TextEditingController _zirhController = TextEditingController();
@@ -203,6 +205,7 @@ class _KarotiyerTabState extends State<KarotiyerTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LockedTabWrapper(
       child: Container(
         color: const Color(0xFFF5F7FA),

@@ -20,7 +20,9 @@ class CoreLogTab extends StatefulWidget {
   State<CoreLogTab> createState() => _CoreLogTabState();
 }
 
-class _CoreLogTabState extends State<CoreLogTab> {
+class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _images = [];
   
@@ -211,6 +213,7 @@ class _CoreLogTabState extends State<CoreLogTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LockedTabWrapper(
       child: Container(
         color: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan

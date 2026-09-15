@@ -597,7 +597,9 @@ class ReportTab extends StatefulWidget {
   State<ReportTab> createState() => _ReportTabState();
 }
 
-class _ReportTabState extends State<ReportTab> {
+class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final _formKey = GlobalKey<FormState>();
   final _operatorNameController = TextEditingController();
   final _kuyuNameController = TextEditingController();
@@ -611,19 +613,6 @@ class _ReportTabState extends State<ReportTab> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final dp = context.read<DataProvider>();
-      if (dp.operatorName != null && dp.operatorName!.isNotEmpty) {
-        _operatorNameController.text = dp.operatorName!;
-      }
-      if (dp.wellNo != null && dp.wellNo!.isNotEmpty) {
-        _kuyuNameController.text = dp.wellNo!;
-      }
-      if (dp.registrationNo != null && dp.registrationNo!.isNotEmpty) {
-        _operatorNumberController.text = dp.registrationNo!;
-      }
-    });
-    // Raporun başarı durumunu dinleyerek operatör bilgilerini güncelle
     // context.read<ReportProvider>().addListener(_onReportStatusChanged);
   }
 
@@ -784,6 +773,7 @@ class _ReportTabState extends State<ReportTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Align(
       alignment: Alignment.topCenter,
       child: KeyboardScrollableWrapper(

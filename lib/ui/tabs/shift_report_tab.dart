@@ -15,7 +15,9 @@ class ShiftReportTab extends StatefulWidget {
   State<ShiftReportTab> createState() => _ShiftReportTabState();
 }
 
-class _ShiftReportTabState extends State<ShiftReportTab> {
+class _ShiftReportTabState extends State<ShiftReportTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final TextEditingController _aController = TextEditingController();
   final TextEditingController _sController = TextEditingController();
   final TextEditingController _mController = TextEditingController();
@@ -296,6 +298,7 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LockedTabWrapper(
       child: Container(
         color: const Color(0xFFF5F7FA),
