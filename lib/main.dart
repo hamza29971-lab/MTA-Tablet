@@ -25,6 +25,13 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:vtm_tablet/services/update_service.dart';
 import 'package:vtm_tablet/ui/widgets/update_dialog.dart';
 
+class NoStretchScrollBehavior extends ScrollBehavior {
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -104,6 +111,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'VTM-16',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: NoStretchScrollBehavior(),
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -356,6 +364,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // KLAVYE AÇILDIĞINDA EKRANI DARALTMA!
       appBar: AppBar(
         // ✅ DEĞİŞİKLİK: Sol tarafa sabit başlık eklendi
         leadingWidth: 500, // Metnin sığması için genişliği ayarlıyoruz
@@ -478,6 +487,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 Expanded(
                   // 4. Sayfaları göstermek için PageView kullanıyoruz.
                   child: PageView(
+                    physics: const ClampingScrollPhysics(),
                     controller: _pageController,
                     // Sayfaları children olarak veriyoruz
                     children: _pages,

@@ -51,6 +51,7 @@ dependencies:
   open_file: ^3.3.2           # İndirilen APK'yı açar
   path_provider: ^2.1.4       # Cihaz depolama yolunu bulur
   image_picker: ^1.2.3
+  image: ^4.10.1
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +79,7 @@ flutter:
   assets:
     - assets/sounds/
     - assets/logos/
+    - assets/images/
     - assets/version.txt
   #   - images/a_dot_ham.jpeg
 

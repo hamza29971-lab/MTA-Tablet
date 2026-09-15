@@ -588,6 +588,7 @@ import 'package:provider/provider.dart';
 import '../../models/report_data.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/data_provider.dart';
+import '../widgets/keyboard_scrollable_wrapper.dart';
 
 class ReportTab extends StatefulWidget {
   const ReportTab({super.key});
@@ -690,15 +691,20 @@ class _ReportTabState extends State<ReportTab> {
         teslimAlinanMetraj: faultMeterValue,
       );
       
-      // Operatör bilgilerini DataProvider'a kaydet (Karot, Vardiya ve Arıza sekmeleri buradan okur)
-      context.read<DataProvider>().setOperatorInfo(
-        operatorName,
-        operatorNumber,
-        kuyuName,
-        teamName: teamName,
-        bolgeAdi: _faultTextController.text,
-        teslimAlinanMetraj: faultMeterValue,
-      );
+      final dp = context.read<DataProvider>();
+      final bool wasLocked = dp.isSystemLocked;
+
+      if (wasLocked) {
+        // Sistem kilitliyse (ilk giriş), operatör bilgilerini kaydet ve kilitleri AÇ
+        dp.setOperatorInfo(
+          operatorName,
+          operatorNumber,
+          kuyuName,
+          teamName: teamName,
+          bolgeAdi: _faultTextController.text,
+          teslimAlinanMetraj: faultMeterValue,
+        );
+      }
       
       context.read<ReportProvider>().sendReport(reportData);
 
@@ -756,6 +762,13 @@ class _ReportTabState extends State<ReportTab> {
                     ),
                     onPressed: () {
                       Navigator.of(ctx).pop();
+                      
+                      // Eğer sistem açıksa (önceden unlocked idiyse) ve rapor başarıyla gönderildiyse
+                      // sistemi artık kapat (kilitle)
+                      if (!wasLocked && provider.status == ReportStatus.success) {
+                        context.read<DataProvider>().clearOperatorInfo();
+                      }
+                      
                       _clearFormAndResetStatus();
                     },
                     child: const Text('Tamam', style: TextStyle(fontSize: 28)),
@@ -771,9 +784,12 @@ class _ReportTabState extends State<ReportTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    return Align(
+      alignment: Alignment.topCenter,
+      child: KeyboardScrollableWrapper(
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           // ─── HOŞGELDİNİZ HEADER ────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
@@ -873,100 +889,99 @@ class _ReportTabState extends State<ReportTab> {
 
           // ─── RAPOR FORMU ────────────────────────────────────────────────
           Expanded(
-            child: SingleChildScrollView(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
+            child: Container(
+              alignment: Alignment.center,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SizedBox(
+                  height: double.infinity,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 10.0),
                     child: Form(
                       key: _formKey,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildTextField(_operatorNameController, 'Operatör İsmi'),
-                          const SizedBox(height: 10),
-                          _buildTextField(_kuyuNameController, 'Kuyu Adı'),
-                          const SizedBox(height: 10),
                           _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
-                          const SizedBox(height: 10),
+                          _buildTextField(_kuyuNameController, 'Kuyu Adı'),
                           _buildTextField(_faultTextController, 'Bölge Adı', required: false),
-                          const SizedBox(height: 10),
                           DropdownButtonFormField<String>(
-                            value: _selectedTeam,
-                            decoration: const InputDecoration(
-                              labelText: 'Takım İsmi',
-                              border: OutlineInputBorder(),
-                            ),
-                            hint: const Text('Bir takım seçin'),
-                            items: _teamOptions.map((String team) {
-                              return DropdownMenuItem<String>(
-                                value: team,
-                                child: Text(team),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedTeam = newValue;
-                              });
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Lütfen bir takım seçin';
-                              }
-                              return null;
-                            },
+                          value: _selectedTeam,
+                          decoration: const InputDecoration(
+                            labelText: 'Takım İsmi',
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            controller: _faultMeterController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'Teslim Alınan Metraj',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Bu alan boş bırakılamaz';
-                              }
-                              if (double.tryParse(value) == null) {
-                                return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
-                              }
-                              return null;
-                            },
+                          hint: const Text('Bir takım seçin'),
+                          items: _teamOptions.map((String team) {
+                            return DropdownMenuItem<String>(
+                              value: team,
+                              child: Text(team),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedTeam = newValue;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Lütfen bir takım seçin';
+                            }
+                            return null;
+                          },
+                        ),
+                        TextFormField(
+                          controller: _faultMeterController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            labelText: 'Teslim Alınan Metraj',
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: _submitReport,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: const Color(0xFF046464),
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text(
-                              'RAPORU GÖNDER',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                            ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Bu alan boş bırakılamaz';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
+                            }
+                            return null;
+                          },
+                        ),
+                        ElevatedButton(
+                          onPressed: _submitReport,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: const Color(0xFF046464),
+                            foregroundColor: Colors.white,
                           ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+                          child: const Text(
+                            'RAPORU GÖNDER',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          ),
+                        ),
+                      ],
+                    ), // Column
+                  ), // Form
+                ), // Padding
+              ), // SizedBox
+            ), // ConstrainedBox
+          ), // Container
+        ), // Expanded
+      ], // Column children
+        ),
+      ),
     );
   }
 
 
-  // ✅ DEĞİŞİKLİK: 'required' parametresi eklendi ve validator güncellendi.
-  Widget _buildTextField(TextEditingController controller, String label, {int maxLines = 1, bool isNumber = false, bool required = true}) {
+  Widget _buildTextField(TextEditingController controller, String label, {int maxLines = 1, bool isNumber = false, bool required = true, TextInputAction action = TextInputAction.next}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      textInputAction: action,
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,

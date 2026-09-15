@@ -1,6 +1,7 @@
 // lib/providers/report_provider.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/report_data.dart';
 import '../services/udp_service.dart';
@@ -58,10 +59,22 @@ class ReportProvider with ChangeNotifier {
     _ackMessage = '';
     notifyListeners();
 
-    // UDP ile kutuya (VTM-16) gönder ve onay bekle
+    // UDP ile kutuya (VTM-16) gönder
     await _udpService.sendReport(jsonPayload);
 
-    // 10 saniye içinde onay gelmezse zaman aşımına uğrat
+    // Eğer Windows'ta test ediliyorsa (Güvenlik duvarı UDP yanıtını keseceği için) onay bekleme, direkt başarılı say
+    if (!kIsWeb && Platform.isWindows) {
+      _ackTimer = Timer(const Duration(seconds: 1), () {
+        if (_status == ReportStatus.sending) {
+          _status = ReportStatus.success;
+          _ackMessage = 'Rapor gönderildi (Windows Test Modu).';
+          notifyListeners();
+        }
+      });
+      return;
+    }
+
+    // Gerçek sahada (Tablet vb.) 10 saniye içinde onay gelmezse zaman aşımına uğrat
     _ackTimer = Timer(const Duration(seconds: 10), () {
       if (_status == ReportStatus.sending) {
         _status = ReportStatus.timeout;

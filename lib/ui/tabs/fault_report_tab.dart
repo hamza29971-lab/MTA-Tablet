@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../services/mqtt_service.dart';
@@ -8,6 +9,8 @@ import '../../services/cloudinary_service.dart';
 import '../../models/report_data.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/data_provider.dart';
+import '../widgets/keyboard_scrollable_wrapper.dart';
+import '../widgets/locked_tab_wrapper.dart';
 
 class FaultReportTab extends StatefulWidget {
   const FaultReportTab({super.key});
@@ -49,43 +52,17 @@ class _FaultReportTabState extends State<FaultReportTab> {
     final isDescEmpty = _descController.text.trim().isEmpty;
     final isImagesEmpty = _images.isEmpty;
 
-    // Fotoğrafları Cloudinary'ye yükle (eğer varsa)
+    // Fotoğraflar JSON formatını bozmamak için her zaman boş liste olarak gönderilir
     List<String> imageUrls = [];
-    if (_images.isNotEmpty) {
-      // Yükleniyor pop-up'ı göster
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const AlertDialog(
-            content: SizedBox(
-              width: 800,
-              child: Row(
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF046464)),
-                  SizedBox(width: 20),
-                  Text("Fotoğraflar yükleniyor...", style: TextStyle(fontSize: 28)),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-
-      imageUrls = await CloudinaryService.uploadImages(_images);
-      
-      // Yükleniyor pop-up'ını kapat
-      if (mounted) Navigator.of(context).pop();
-    }
 
     if (!mounted) return;
     
     final dp = context.read<DataProvider>();
     final faultTextJson = jsonEncode({
-      'Test Tipi': 'Arıza Raporu',
-      'Açıklama': _descController.text,
-      'Fotoğraflar': imageUrls,
-      'Tarih': DateTime.now().toIso8601String(),
+      'type': 'fault',
+      'desc': _descController.text,
+      'photos': imageUrls,
+      'datetime': DateTime.now().toIso8601String(),
     });
 
     final reportData = ReportData(
@@ -178,16 +155,15 @@ class _FaultReportTabState extends State<FaultReportTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: 750, // Sabit yükseklik, klavye açılınca daralmaz, kaydırılabilir olur
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return LockedTabWrapper(
+      child: Container(
+        color: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan
+        child: KeyboardScrollableWrapper(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Ana İçerik (İki Kolon)
             Expanded(
               child: Row(
@@ -213,7 +189,7 @@ class _FaultReportTabState extends State<FaultReportTab> {
                                     Icon(Icons.image_outlined, color: Color(0xFF046464)),
                                     SizedBox(width: 8),
                                     Text(
-                                      'Rapor Görselleri',
+                                      'Arıza Görselleri',
                                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                     ),
                                   ],
@@ -225,36 +201,19 @@ class _FaultReportTabState extends State<FaultReportTab> {
                               ],
                             ),
                             const SizedBox(height: 24),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => _pickImage(ImageSource.gallery),
-                                    icon: const Icon(Icons.add_photo_alternate),
-                                    label: const Text('Görsel Ekle'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF046464),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                  ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {}, // Fotoğraf özelliği iptal edildi (sadece görsel)
+                                icon: const Icon(Icons.camera_alt_outlined),
+                                label: const Text('Fotoğraf Çek'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.black87,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: const BorderSide(color: Colors.grey),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _pickImage(ImageSource.camera),
-                                    icon: const Icon(Icons.camera_alt_outlined),
-                                    label: const Text('Fotoğraf Çek'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.black87,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      side: const BorderSide(color: Colors.grey),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                             const SizedBox(height: 24),
                             Expanded(
@@ -415,6 +374,7 @@ class _FaultReportTabState extends State<FaultReportTab> {
           ],
         ),
       ),
-    )));
+      ),
+    )); // End LockedTabWrapper
   }
 }

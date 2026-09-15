@@ -6,7 +6,8 @@ import '../../services/mqtt_service.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../models/report_data.dart';
-
+import '../widgets/locked_tab_wrapper.dart';
+import '../widgets/keyboard_scrollable_wrapper.dart';
 class ShiftReportTab extends StatefulWidget {
   const ShiftReportTab({super.key});
 
@@ -23,6 +24,8 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
   final TextEditingController _ilerlemeController = TextEditingController();
   final TextEditingController _karotBoyuController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _muhafazaSayisiController = TextEditingController();
+  final TextEditingController _muhafazaMetrajiController = TextEditingController();
 
   double _t = 0.0;
   double _2 = 0.0;
@@ -49,6 +52,8 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
     _ilerlemeController.dispose();
     _karotBoyuController.dispose();
     _descController.dispose();
+    _muhafazaSayisiController.dispose();
+    _muhafazaMetrajiController.dispose();
     super.dispose();
   }
 
@@ -109,20 +114,22 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
     final dp = context.read<DataProvider>();
     
     final Map<String, dynamic> payload = {
-      'Test Tipi': 'Vardiya Raporu',
-      'Tij Adedi': double.tryParse(_aController.text.replaceAll(',', '.')) ?? 0.0,
-      'Bir Tij Uzunluğu (m)': double.tryParse(_sController.text.replaceAll(',', '.')) ?? 0.0,
-      'Tijlerin Toplam Uzunluğu (m)': double.parse(_t.toStringAsFixed(2)),
-      'Karotiyer+Zırh+Uzatma+Portkron+Matkap Uzunluğu (m)': double.tryParse(_mController.text.replaceAll(',', '.')) ?? 0.0,
-      'Matkap Ucundan Su Başlığına Kadar Takım Uzunluğu (m)': double.parse(_2.toStringAsFixed(2)),
-      'Morset Üstü Su Başlığı (m)': double.tryParse(_uController.text.replaceAll(',', '.')) ?? 0.0,
-      'Morset Üstü Şase Altı (m)': double.tryParse(_pController.text.replaceAll(',', '.')) ?? 0.0,
-      'Toplam Mesafe (m)': double.parse(_3.toStringAsFixed(2)),
-      'Kuyu Derinliği (m)': double.parse(_4.toStringAsFixed(2)),
-      'Yapılan İlerleme (m)': double.tryParse(_ilerlemeController.text.replaceAll(',', '.')) ?? 0.0,
-      'Karot Boyu (m)': _karotBoyuController.text,
-      'Açıklama (Varsa)': _descController.text,
-      'Tarih / Saat': DateTime.now().toIso8601String(),
+      'type': 'shift',
+      'rod_cnt': double.tryParse(_aController.text.replaceAll(',', '.')) ?? 0.0,
+      'rod_len': double.tryParse(_sController.text.replaceAll(',', '.')) ?? 0.0,
+      'tot_rod_len': double.parse(_t.toStringAsFixed(2)),
+      'tool_len': double.tryParse(_mController.text.replaceAll(',', '.')) ?? 0.0,
+      'tot_tool_len': double.parse(_2.toStringAsFixed(2)),
+      'mors_wat': double.tryParse(_uController.text.replaceAll(',', '.')) ?? 0.0,
+      'mors_und': double.tryParse(_pController.text.replaceAll(',', '.')) ?? 0.0,
+      'tot_m': double.parse(_3.toStringAsFixed(2)),
+      'well_depth': double.parse(_4.toStringAsFixed(2)),
+      'adv_m': double.tryParse(_ilerlemeController.text.replaceAll(',', '.')) ?? 0.0,
+      'core_m': _karotBoyuController.text,
+      'cas_cnt': _muhafazaSayisiController.text,
+      'cas_len': _muhafazaMetrajiController.text,
+      'desc': _descController.text,
+      'date': DateTime.now().toIso8601String(),
     };
     
     final faultTextJson = jsonEncode(payload);
@@ -289,122 +296,114 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: 750, // Sabit yükseklik
+    return LockedTabWrapper(
+      child: Container(
+        color: const Color(0xFFF5F7FA),
+        child: KeyboardScrollableWrapper(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                      // İKİ KOLONLU İÇERİK
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                  // ─── SOL KART ───
-                  Expanded(
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _input('Tij Adedi', _aController),
-                            _input('Bir Tij Uzunluğu (m)', _sController),
-                            _calc('Tijlerin Toplam Uzunluğu (m)', _t),
-
-                            _input('Karotiyer+Zırh+Uzatma+Portkron+Matkap Uzunluğu (m)', _mController),
-                            _calc('Matkap Ucundan Su Başlığına Kadar Takım Uzunluğu (m)', _2),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  // ─── SAĞ KART ───
-                  Expanded(
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _input('Morset Üstü Su Başlığı (m)', _uController),
-                            _input('Morset Üstü Şase Altı (m)', _pController),
-                            _calc('Toplam Mesafe (m)', _3),
-                            _calc('Kuyu Derinliği (m)', _4),
-
-                            _input('Yapılan İlerleme (m)', _ilerlemeController),
-                            _input('Karot Boyu (m)', _karotBoyuController,
-                                action: TextInputAction.done),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            // ─── GÖNDER BUTONU ───
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Sol Kart hizası
+                // İKİ KOLONLU İÇERİK
                 Expanded(
-                  child: TextField(
-                    controller: _descController,
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Açıklama (Varsa)',
-                      border: OutlineInputBorder(),
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ─── SOL KART ───
+                      Expanded(
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          color: Colors.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _input('Tij Adedi', _aController),
+                                _input('Bir Tij Uzunluğu (m)', _sController),
+                                _calc('Tijlerin Toplam Uzunluğu (m)', _t),
+                                _input('Karotiyer+Zırh+Uzatma+Portkron+Matkap Uzunluğu (m)', _mController),
+                                _calc('Matkap Ucundan Su Başlığına Kadar Takım Uzunluğu (m)', _2),
+                                _input('Kuyudaki muhafaza sayısı', _muhafazaSayisiController),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      // ─── SAĞ KART ───
+                      Expanded(
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          color: Colors.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _input('Morset Üstü Su Başlığı (m)', _uController),
+                                _input('Morset Üstü Şase Altı (m)', _pController),
+                                _calc('Toplam Mesafe (m)', _3),
+                                _calc('Kuyu Derinliği (m)', _4),
+                                _input('Yapılan İlerleme (m)', _ilerlemeController),
+                                _input('Karot Boyu (m)', _karotBoyuController, action: TextInputAction.next),
+                                _input('Kuyudaki muhafaza metrajı (m)', _muhafazaMetrajiController),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                // Ortadaki boşluk (kartlar arası boşluk ile aynı: 24)
-                const SizedBox(width: 24),
-                // Sağ Kart hizası
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 250,
-                      height: 60, // TextField ile aynı hizada olması için yükseklik verildi
-                      child: ElevatedButton.icon(
-                        onPressed: _submitReport,
-                        icon: const Icon(Icons.send),
-                        label: const Text('Raporu Gönder'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF046464),
-                          foregroundColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 4,
+                const SizedBox(height: 20),
+                // ─── GÖNDER BUTONU ───
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _descController,
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Açıklama (Varsa)',
+                          border: OutlineInputBorder(),
                         ),
                       ),
-
-                    ), // End SizedBox
-                  ), // End Align
-                ), // End Expanded
-                  ], // End Row children
-                ), // End Row
-              ], // End Column children
-            ), // End Column
-          ), // End Padding
-        ), // End SizedBox
-      ), // End SingleChildScrollView
-    ); // End Scaffold
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 250,
+                          height: 60,
+                          child: ElevatedButton.icon(
+                            onPressed: _submitReport,
+                            icon: const Icon(Icons.send),
+                            label: const Text('Raporu Gönder'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF046464),
+                              foregroundColor: Colors.white,
+                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _clearFormAndResetStatus() {
@@ -417,6 +416,8 @@ class _ShiftReportTabState extends State<ShiftReportTab> {
       _ilerlemeController.clear();
       _karotBoyuController.clear();
       _descController.clear();
+      _muhafazaSayisiController.clear();
+      _muhafazaMetrajiController.clear();
     });
     context.read<ReportProvider>().resetStatus();
   }

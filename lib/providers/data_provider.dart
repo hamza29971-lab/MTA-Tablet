@@ -122,7 +122,7 @@ class DataProvider with ChangeNotifier {
   String? _teamName;
   String? _bolgeAdi;
   double? _teslimAlinanMetraj;
-  bool _isSystemLocked = false; // System is never locked
+  bool _isSystemLocked = true; // Added for start screen locking
 
   String? get operatorName => _operatorName;
   String? get registrationNo => _registrationNo;
@@ -157,7 +157,7 @@ class DataProvider with ChangeNotifier {
     _teamName = null;
     _bolgeAdi = null;
     _teslimAlinanMetraj = null;
-    _isSystemLocked = false;
+    _isSystemLocked = true;
     notifyListeners();
   }
 

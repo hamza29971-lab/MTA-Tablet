@@ -6,6 +6,7 @@ class IndustrialTextField extends StatefulWidget {
   final String? label;
   final TextInputType keyboardType;
   final int maxLines;
+  final TextInputAction? textInputAction;
 
   const IndustrialTextField({
     Key? key,
@@ -14,6 +15,7 @@ class IndustrialTextField extends StatefulWidget {
     this.hintText,
     this.keyboardType = TextInputType.text,
     this.maxLines = 1,
+    this.textInputAction,
   }) : super(key: key);
 
   @override
@@ -42,7 +44,7 @@ class _IndustrialTextFieldState extends State<IndustrialTextField> {
           controller: widget.controller,
           maxLines: widget.maxLines,
           keyboardType: widget.keyboardType,
-          textInputAction: TextInputAction.next,
+          textInputAction: widget.textInputAction,
           decoration: InputDecoration(
             hintText: widget.hintText,
             filled: true,

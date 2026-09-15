@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../widgets/keyboard_scrollable_wrapper.dart';
 import '../../services/mqtt_service.dart';
 import '../../services/udp_service.dart';
 import '../../services/cloudinary_service.dart';
@@ -10,6 +11,7 @@ import '../../providers/report_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../models/report_data.dart';
 import '../widgets/industrial_text_field.dart';
+import '../widgets/locked_tab_wrapper.dart';
 
 class CoreLogTab extends StatefulWidget {
   const CoreLogTab({super.key});
@@ -58,17 +60,8 @@ class _CoreLogTabState extends State<CoreLogTab> {
     final isMetrajBitEmpty = _metrajBitisController.text.trim().isEmpty;
     final isImagesEmpty = _images.isEmpty;
 
-    if (isKuyuEmpty || isMetrajBasEmpty || isMetrajBitEmpty || isImagesEmpty) {
-      String errorMsg = 'Lütfen Kuyu No, Metraj bilgilerini doldurun ve en az bir fotoğraf seçin.';
-      if (isKuyuEmpty || isMetrajBasEmpty || isMetrajBitEmpty) {
-        if (isImagesEmpty) {
-          errorMsg = 'Lütfen metin alanlarını (Kuyu No, Metraj) doldurun ve fotoğraf seçin.';
-        } else {
-          errorMsg = 'Lütfen metin alanlarını (Kuyu No, Metraj) doldurun.';
-        }
-      } else if (isImagesEmpty) {
-        errorMsg = 'Lütfen en az bir fotoğraf seçin.';
-      }
+    if (isKuyuEmpty || isMetrajBasEmpty || isMetrajBitEmpty) {
+      String errorMsg = 'Lütfen metin alanlarını (Kuyu No, Metraj) doldurun.';
 
       showDialog(
         context: context,
@@ -106,34 +99,8 @@ class _CoreLogTabState extends State<CoreLogTab> {
       return;
     }
 
-    // Fotoğrafları Cloudinary'ye yükle (eğer varsa)
+    // Fotoğraflar JSON formatını bozmamak için her zaman boş liste olarak gönderilir
     List<String> imageUrls = [];
-    if (_images.isNotEmpty) {
-      // Yükleniyor pop-up'ı göster
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const AlertDialog(
-            content: SizedBox(
-              width: 800,
-              child: Row(
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF046464)),
-                  SizedBox(width: 20),
-                  Text("Fotoğraflar yükleniyor...", style: TextStyle(fontSize: 28)),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-
-      imageUrls = await CloudinaryService.uploadImages(_images);
-      
-      // Yükleniyor pop-up'ını kapat
-      if (mounted) Navigator.of(context).pop();
-    }
 
     if (!mounted) return;
     final reportProvider = context.read<ReportProvider>();
@@ -141,12 +108,12 @@ class _CoreLogTabState extends State<CoreLogTab> {
     
     // Sadece API'ye gönderilecek verileri hazırla
     final Map<String, dynamic> payload = {
-      'Test Tipi': 'Karot bilgileri',
-      'Kuyu No': _kuyuNoController.text,
-      'Metraj Başlangıç': double.tryParse(_metrajBaslangicController.text.replaceAll(',', '.')) ?? 0.0,
-      'Metraj Bitiş': double.tryParse(_metrajBitisController.text.replaceAll(',', '.')) ?? 0.0,
-      'Fotoğraflar': imageUrls,
-      'Timestamp': DateTime.now().toIso8601String(),
+      'type': 'core_log',
+      'well_no': _kuyuNoController.text,
+      'start_m': double.tryParse(_metrajBaslangicController.text.replaceAll(',', '.')) ?? 0.0,
+      'end_m': double.tryParse(_metrajBitisController.text.replaceAll(',', '.')) ?? 0.0,
+      'photos': imageUrls,
+      'datetime': DateTime.now().toIso8601String(),
     };
     
     final faultTextJson = jsonEncode(payload);
@@ -218,7 +185,11 @@ class _CoreLogTabState extends State<CoreLogTab> {
                   ),
                   onPressed: () {
                     Navigator.of(ctx).pop();
-                    _clearFormAndResetStatus();
+                    if (isSuccess) {
+                      _clearFormAndResetStatus();
+                    } else {
+                      context.read<ReportProvider>().resetStatus();
+                    }
                   },
                   child: const Text('Tamam', style: TextStyle(fontSize: 28)),
                 ),
@@ -240,16 +211,15 @@ class _CoreLogTabState extends State<CoreLogTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: 750, // Sabit yükseklik, klavye açılınca daralmaz, kaydırılabilir olur
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return LockedTabWrapper(
+      child: Container(
+        color: const Color(0xFFF5F7FA), // Açık gri/mavi arkaplan
+        child: KeyboardScrollableWrapper(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Ana İçerik (İki Kolon)
             Expanded(
               child: Row(
@@ -267,7 +237,6 @@ class _CoreLogTabState extends State<CoreLogTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             _buildTextField('Kuyu No', _kuyuNoController),
                             const SizedBox(height: 24),
                             // Metraj Alanı
@@ -299,6 +268,7 @@ class _CoreLogTabState extends State<CoreLogTab> {
                                     label: '',
                                     hintText: 'Bitiş',
                                     keyboardType: TextInputType.number,
+                                    textInputAction: TextInputAction.done,
                                   ),
                                 ),
                               ],
@@ -341,36 +311,19 @@ class _CoreLogTabState extends State<CoreLogTab> {
                               ],
                             ),
                             const SizedBox(height: 24),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => _pickImage(ImageSource.gallery),
-                                    icon: const Icon(Icons.add_photo_alternate),
-                                    label: const Text('Görsel Ekle'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF046464),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                  ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {}, // Fotoğraf özelliği iptal edildi (sadece görsel)
+                                icon: const Icon(Icons.camera_alt_outlined),
+                                label: const Text('Fotoğraf Çek'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.black87,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: const BorderSide(color: Colors.grey),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _pickImage(ImageSource.camera),
-                                    icon: const Icon(Icons.camera_alt_outlined),
-                                    label: const Text('Fotoğraf Çek'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.black87,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      side: const BorderSide(color: Colors.grey),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                             const SizedBox(height: 24),
                             Expanded(
@@ -475,14 +428,14 @@ class _CoreLogTabState extends State<CoreLogTab> {
           ],
         ),
       ),
-    )));
+      ),
+    ));
   }
 
   void _clearFormAndResetStatus() {
     setState(() {
       _images.clear();
-      // Kuyu No korunuyor - aynı kuyuda birden fazla karot alınabilir
-      // _kuyuNoController.clear();
+      _kuyuNoController.clear();
       _metrajBaslangicController.clear();
       _metrajBitisController.clear();
     });

@@ -35,12 +35,12 @@ class ReportData {
     };
     // "Bölge Adı" → fault_text'in hemen yanına (altına)
     if (bolgeAdi != null) {
-      map['Bölge Adı'] = bolgeAdi;
+      map['region'] = bolgeAdi;
     }
     map['fault_meter'] = faultMeter;
     // "Teslim Alınan Metraj" → fault_meter'ın hemen yanına (altına)
     if (teslimAlinanMetraj != null) {
-      map['Teslim Alınan Metraj'] = teslimAlinanMetraj;
+      map['deliv_m'] = teslimAlinanMetraj;
     }
     return map;
   }
