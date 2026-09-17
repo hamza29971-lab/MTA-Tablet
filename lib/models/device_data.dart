@@ -44,14 +44,14 @@ class DeviceData extends Equatable {
         canData: CanData.fromJson(json['can_data'] ?? {}),
         // DEĞİŞİKLİK: Null kontrolü kaldırıldı, nesne her zaman parse edilecek.
         canDtcData: CanDtcData.fromJson(json['can_dtc_data'] ?? {}),
-        analogData: () {
-          var list = List<double>.from(json['analog_data'] ?? []);
-          if (list.length > 11) {
-            list[11] = list[11] * 100.0;
+        analogData: List<double>.from(json['analog_data'] ?? []),
+        auxData: () {
+          var list = List<int>.from(json['aux_data'] ?? []);
+          if (list.isNotEmpty) {
+            list[0] = list[0] ~/ 2;
           }
           return list;
         }(),
-        auxData: List<int>.from(json['aux_data'] ?? []),
         sensorData: SensorData.fromJson(json['sensor_data'] ?? {}),
         sysInfo: SysInfo.fromJson(json['sys_info'] ?? {}),
       );
@@ -62,14 +62,14 @@ class DeviceData extends Equatable {
         canData: CanData.fromJson(json['can_data'] ?? {}),
         // DEĞİŞİKLİK: Null kontrolü kaldırıldı, nesne her zaman parse edilecek.
         canDtcData: CanDtcData.fromJson(json['can_dtc_data'] ?? {}),
-        analogData: () {
-          var list = List<double>.from(json['analog_data'] ?? []);
-          if (list.length > 11) {
-            list[11] = list[11] * 100.0;
+        analogData: List<double>.from(json['analog_data'] ?? []),
+        auxData: () {
+          var list = List<int>.from(json['aux_data'] ?? []);
+          if (list.isNotEmpty) {
+            list[0] = list[0] ~/ 2;
           }
           return list;
         }(),
-        auxData: List<int>.from(json['aux_data'] ?? []),
         sensorData: SensorData.fromJson(json['sensor_data'] ?? {}),
         sysInfo: SysInfo.fromJson(json['sys_info'] ?? {}),
       );
