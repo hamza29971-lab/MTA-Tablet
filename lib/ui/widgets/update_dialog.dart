@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
+import '../../services/kiosk_service.dart';
 import '../../services/update_service.dart';
 
 class UpdateDialog extends StatefulWidget {
@@ -39,11 +40,24 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
       if (mounted) {
         setState(() => _statusText = 'Kurulum baslatiliyor...');
+
+        // Kiosk (device owner) modunda sistemin kurulum ekrani one GELEMEZ:
+        // kilit gorevi yalnizca bu pakete izinlidir. Bu yuzden once cihaz
+        // sahibi yetkisiyle sessiz kurulum denenir; yalnizca o calismazsa
+        // (kiosk disi tablet, gelistirici cihazi) eski yol kullanilir.
+        final silent = await KioskService.installApk(file.path);
+        if (silent) {
+          if (mounted) {
+            setState(() => _statusText = 'Kuruluyor, uygulama yeniden baslayacak...');
+          }
+          return;
+        }
+
         final result = await OpenFile.open(
           file.path,
           type: 'application/vnd.android.package-archive',
         );
-        
+
         if (mounted) {
           if (result.type == ResultType.done) {
             Navigator.of(context).pop();

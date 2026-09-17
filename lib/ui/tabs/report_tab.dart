@@ -682,19 +682,15 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
       
       final dp = context.read<DataProvider>();
       final bool wasLocked = dp.isSystemLocked;
+      // Rapor onaylanırsa kilidi açmak için gereken bilgiler burada saklanır.
+      final String bolgeAdiValue = _faultTextController.text;
 
-      if (wasLocked) {
-        // Sistem kilitliyse (ilk giriş), operatör bilgilerini kaydet ve kilitleri AÇ
-        dp.setOperatorInfo(
-          operatorName,
-          operatorNumber,
-          kuyuName,
-          teamName: teamName,
-          bolgeAdi: _faultTextController.text,
-          teslimAlinanMetraj: faultMeterValue,
-        );
-      }
-      
+      // DİKKAT: Kilit BURADA açılmaz.
+      // "Arıza Raporu", "Karot Bilgileri", "Karotiyer Bilgileri" ve
+      // "Vardiya Raporu" sayfaları ancak rapor kutudan ONAY aldıktan sonra
+      // (ReportStatus.success) açılır. Gönderim başarısız olur veya zaman
+      // aşımına uğrarsa sistem kilitli kalır ve operatör raporu tekrar
+      // göndermek zorundadır.
       context.read<ReportProvider>().sendReport(reportData);
 
       showDialog(
@@ -750,14 +746,34 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                     ),
                     onPressed: () {
+                      final bool sendSucceeded =
+                          provider.status == ReportStatus.success;
                       Navigator.of(ctx).pop();
-                      
-                      // Eğer sistem açıksa (önceden unlocked idiyse) ve rapor başarıyla gönderildiyse
-                      // sistemi artık kapat (kilitle)
-                      if (!wasLocked && provider.status == ReportStatus.success) {
+
+                      if (!sendSucceeded) {
+                        // Gönderim başarısız: kilit durumu DEĞİŞMEZ.
+                        // Form da temizlenmez; operatör bilgileri baştan
+                        // yazmadan "Rapor Gönder" ile tekrar deneyebilsin.
+                        context.read<ReportProvider>().resetStatus();
+                        return;
+                      }
+
+                      if (wasLocked) {
+                        // İlk rapor ONAYLANDI: diğer sayfaların kilidi şimdi açılır.
+                        context.read<DataProvider>().setOperatorInfo(
+                              operatorName,
+                              operatorNumber,
+                              kuyuName,
+                              teamName: teamName,
+                              bolgeAdi: bolgeAdiValue,
+                              teslimAlinanMetraj: faultMeterValue,
+                            );
+                      } else {
+                        // Sistem açıkken gönderilen rapor onaylandı:
+                        // vardiya kapanır, sistem tekrar kilitlenir.
                         context.read<DataProvider>().clearOperatorInfo();
                       }
-                      
+
                       _clearFormAndResetStatus();
                     },
                     child: const Text('Tamam', style: TextStyle(fontSize: 28)),

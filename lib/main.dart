@@ -24,6 +24,11 @@ import 'package:vtm_tablet/providers/config_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:vtm_tablet/services/update_service.dart';
 import 'package:vtm_tablet/ui/widgets/update_dialog.dart';
+import 'package:vtm_tablet/services/kiosk_service.dart';
+import 'package:vtm_tablet/ui/widgets/kiosk_guard.dart';
+
+/// Kiosk kabugu, geri tusu geldiginde acik bir diyalog var mi diye buraya bakar.
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 class NoStretchScrollBehavior extends ScrollBehavior {
   @override
@@ -112,6 +117,13 @@ class MyApp extends StatelessWidget {
       title: 'VTM-16',
       debugShowCheckedModeBanner: false,
       scrollBehavior: NoStretchScrollBehavior(),
+      navigatorKey: appNavigatorKey,
+      // Kiosk kabugu Navigator'in DISINDA duruyor: acik diyaloglar dahil her
+      // seyin uzerinde kalsin ve kenar kaydirmalarini her durumda yakalasin.
+      builder: (context, child) => KioskGuard(
+        navigatorKey: appNavigatorKey,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -271,44 +283,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  // Çıkış onayı diyaloğunu gösteren metot
-  Future<void> _showExitDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible:
-          false, // Kullanıcının dışarı tıklayarak kapatmasını engelle
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Uygulamadan Çık', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Uygulamadan çıkmak istediğinize emin misiniz?', style: TextStyle(fontSize: 24)),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('İptal', style: TextStyle(fontSize: 22)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text(
-                'Çıkış Yap',
-                style: TextStyle(color: Colors.red, fontSize: 22),
-              ),
-              onPressed: () {
-                // Uygulamayı kapat
-                SystemNavigator.pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // NOT: Eski "Uygulamadan Cik" diyalogu kaldirildi. Kiosk modunda uygulamadan
+  // cikisin TEK yolu kenar kaydirmasi/geri tusu ile acilan yetkili parolasidir
+  // (bkz. lib/ui/widgets/kiosk_guard.dart). SystemNavigator.pop cagiran bir yol
+  // birakilirsa kilit anlamsiz hale gelir.
 
   void _showGlobalAlertDialog(BuildContext context, PopUpData popupData) {
     showDialog(
@@ -363,7 +341,15 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
     }
 
-    return Scaffold(
+    // Geri tusu/jesti uygulamayi ASLA kapatmamali. Android tarafi bu olayi
+    // zaten yakaliyor; bu PopScope ikinci hattir: olay bir sekilde Flutter'a
+    // ulasirsa da cikis engellenir ve yetkili parolasi ekrani acilir.
+    return PopScope(
+      canPop: !KioskService.isSupported,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) KioskGuard.requestExitPrompt();
+      },
+      child: Scaffold(
       resizeToAvoidBottomInset: false, // KLAVYE AÇILDIĞINDA EKRANI DARALTMA!
       appBar: AppBar(
         // ✅ DEĞİŞİKLİK: Sol tarafa sabit başlık eklendi
@@ -505,6 +491,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             ),
           ),
         ],
+      ),
       ),
     );
   }

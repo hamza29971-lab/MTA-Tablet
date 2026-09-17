@@ -1,59 +1,164 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-        <!-- ✅ Cihaz açılışını dinlemek için bu izni ekleyin -->
+    <!-- Cihaz acilisini dinlemek icin -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- ✅ İndirilen APK'nın kurulabilmesi için gerekli izin -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Indirilen APK'nin kurulabilmesi icin -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Kiosk: ekran kilidini kapatmak ve cihazi uyanik tutmak icin -->
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:label="MTA Sondaj"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!--
+          BOLUNMUS EKRAN / POP-UP PENCERE KAPALI.
+          Samsung tabletlerde ekranin ust ortasinda cikan "..." tutamagi
+          yalnizca yeniden boyutlandirilabilir uygulamalar icin gosterilir;
+          o tutamaktan bolunmus ekrana gecilip uygulamadan cikilabiliyordu.
+          Asagidaki bildirim uygulamanin boyut degisikligini DESTEKLEMEDIGINI
+          soyler; her activity'de ayrica android:resizeableActivity="false" var.
+
+          NOT: Asil koruma bunlar DEGIL, kilit gorevidir (lock task). Gercek
+          LOCKED durumunda sistem bolunmus ekrani zaten engeller. Bu bildirimler
+          kilidin herhangi bir sebeple dustugu anlarda ikinci hattir.
+        -->
+        <meta-data
+            android:name="android.supports_size_changes"
+            android:value="false" />
+
+        <!--
+          KIOSK DASHBOARD.
+          Dogrudan baslatilmaz; her zaman KioskBootstrapActivity uzerinden acilir.
+          Bu yuzden LAUNCHER filtresi YOKTUR ve disari kapalidir (exported=false).
+          lockTaskMode="if_whitelisted": paket kilit gorevine izinliyse sistem
+          activity'yi zaten kilitli baslatir.
+        -->
         <activity
             android:name=".MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleTop"
+            android:lockTaskMode="if_whitelisted"
+            android:resizeableActivity="false"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+        </activity>
+
+        <!--
+          GUVENLI BASLANGIC. Uygulamanin tek disa acik giris noktasi.
+          Once device-owner politikasini yazar, sonra dashboard'u kilitli acar.
+        -->
+        <activity
+            android:name=".KioskBootstrapActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="false"
+            android:taskAffinity=".kiosk.bootstrap"
+            android:theme="@style/LaunchTheme">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-            <!-- ✅ Cihaz açılışını dinleyecek olan alıcıyı buraya ekleyin -->
-    <receiver
-        android:name=".BootCompletedReceiver"
-        android:enabled="true"
-        android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED" />
-        </intent-filter>
-    </receiver>
+
+        <!--
+          KALICI ANA EKRAN.
+          Normalde KAPALIDIR (enabled=false): cihaz sahipligi atanmamis bir
+          tablette uygulama ana ekran secenekleri arasinda gorunmemelidir.
+          KioskPolicy sahiplik varken acar, "905174" ile serbest birakilinca
+          tekrar kapatir; boylece tabletin kendi ana ekrani geri gelir.
+        -->
+        <activity-alias
+            android:name=".KioskHomeAlias"
+            android:targetActivity=".KioskBootstrapActivity"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
+        <!--
+          CIHAZ SAHIBI BILESENI.
+          Kurulum scripti bunu atar:
+            dpm set-device-owner com.mta.sondaj_takip/com.example.vtm_tablet.KioskDeviceAdminReceiver
+        -->
+        <receiver
+            android:name=".KioskDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/kiosk_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Tablet acilinca kiosk'u geri getiren IKINCI guvenlik hatti.
+          Birincisi asagidaki KioskHomeAlias'tir: uygulama kalici ANA EKRAN
+          oldugu icin sistem her acilista zaten onu baslatir.
+
+          QUICKBOOT_POWERON: bazi ureticiler hizli acilista BOOT_COMPLETED
+          yerine bunu gonderir.
+          MY_PACKAGE_REPLACED: OTA ile sessiz guncelleme sonrasi uygulama
+          hemen geri gelsin.
+        -->
+        <receiver
+            android:name=".BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Sessiz guncelleme kurulumunun sonucunu alir (yalnizca kendi icimizden) -->
+        <receiver
+            android:name=".KioskInstallReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.vtm_tablet.KIOSK_INSTALL_STATUS" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
+        <!-- Ayarlar modunda kilit gorevine eklenecek paketi bulabilmek icin -->
+        <intent>
+            <action android:name="android.settings.SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.WIFI_SETTINGS" />
+        </intent>
+        <package android:name="com.android.settings" />
     </queries>
 </manifest>
