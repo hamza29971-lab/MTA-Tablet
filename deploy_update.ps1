@@ -3,10 +3,10 @@
 # Bu betik version.txt i gunceller, APK derler ve GitHub a yukler.
 
 param(
-    [string]$RepoPath = "C:\DS-Tablet-G-ncelleme-"
+    [string]$RepoPath = "C:\MTA-G-ncelleme"
 )
 
-$ProjectPath = "C:\new class\flutter_vtm_tablet\vtm_tablet"
+$ProjectPath = "C:\new class\mta\vtm_tablet_mta"
 $ApkSource   = "$ProjectPath\build\app\outputs\flutter-apk\app-release.apk"
 $VersionFile = "$RepoPath\version.json"
 $VersionTxt  = "$ProjectPath\assets\version.txt"

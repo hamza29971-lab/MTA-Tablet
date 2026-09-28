@@ -1,12 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../widgets/keyboard_scrollable_wrapper.dart';
-import '../../services/mqtt_service.dart';
-import '../../services/udp_service.dart';
-import '../../services/cloudinary_service.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../models/report_data.dart';
@@ -23,47 +18,21 @@ class CoreLogTab extends StatefulWidget {
 class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-  final ImagePicker _picker = ImagePicker();
-  final List<XFile> _images = [];
   
   // Text Controllers
-
-  final TextEditingController _kuyuNoController = TextEditingController();
-  final TextEditingController _metrajBaslangicController = TextEditingController();
-  final TextEditingController _metrajBitisController = TextEditingController();
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      if (source == ImageSource.gallery) {
-        final List<XFile> selectedImages = await _picker.pickMultiImage();
-        if (selectedImages.isNotEmpty) {
-          setState(() {
-            _images.addAll(selectedImages);
-          });
-        }
-      } else {
-        final XFile? photo = await _picker.pickImage(source: source);
-        if (photo != null) {
-          setState(() {
-            _images.add(photo);
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Fotoğraf seçme hatası: $e');
-    }
-  }
+  final TextEditingController _elmasNoController = TextEditingController();
+  final TextEditingController _boruAdediController = TextEditingController();
+  final TextEditingController _boruMetrajController = TextEditingController();
 
   Future<void> _submitReport() async {
     FocusScope.of(context).unfocus();
 
-    final isKuyuEmpty = _kuyuNoController.text.trim().isEmpty;
-    final isMetrajBasEmpty = _metrajBaslangicController.text.trim().isEmpty;
-    final isMetrajBitEmpty = _metrajBitisController.text.trim().isEmpty;
-    final isImagesEmpty = _images.isEmpty;
+    final isElmasEmpty = _elmasNoController.text.trim().isEmpty;
+    final isBoruAdediEmpty = _boruAdediController.text.trim().isEmpty;
+    final isBoruMetrajEmpty = _boruMetrajController.text.trim().isEmpty;
 
-    if (isKuyuEmpty || isMetrajBasEmpty || isMetrajBitEmpty) {
-      String errorMsg = 'Lütfen metin alanlarını (Kuyu No, Metraj) doldurun.';
+    if (isElmasEmpty || isBoruAdediEmpty || isBoruMetrajEmpty) {
+      String errorMsg = 'Lütfen metin alanlarını (Elmas Numarası, Boru Adedi, Boru Metrajı) doldurun.';
 
       showDialog(
         context: context,
@@ -101,9 +70,6 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
       return;
     }
 
-    // Fotoğraflar JSON formatını bozmamak için her zaman boş liste olarak gönderilir
-    List<String> imageUrls = [];
-
     if (!mounted) return;
     final reportProvider = context.read<ReportProvider>();
     final dp = context.read<DataProvider>();
@@ -111,10 +77,9 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
     // Sadece API'ye gönderilecek verileri hazırla
     final Map<String, dynamic> payload = {
       'type': 'core_log',
-      'well_no': _kuyuNoController.text,
-      'start_m': double.tryParse(_metrajBaslangicController.text.replaceAll(',', '.')) ?? 0.0,
-      'end_m': double.tryParse(_metrajBitisController.text.replaceAll(',', '.')) ?? 0.0,
-      'photos': imageUrls,
+      'diamond_no': _elmasNoController.text,
+      'pipe_count': int.tryParse(_boruAdediController.text) ?? 0,
+      'pipe_length': double.tryParse(_boruMetrajController.text.replaceAll(',', '.')) ?? 0.0,
       'datetime': DateTime.now().toIso8601String(),
     };
     
@@ -129,6 +94,8 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
       faultMeter: dp.teslimAlinanMetraj ?? 0.0,
       bolgeAdi: dp.bolgeAdi ?? '',
       teslimAlinanMetraj: dp.teslimAlinanMetraj ?? 0.0,
+      tijAdedi: dp.tijAdedi ?? 0.0,
+      morsetUstu: dp.morsetUstu ?? 0.0,
     );
     
     reportProvider.sendReport(reportData);
@@ -203,11 +170,11 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(String label, TextEditingController controller, {TextInputType keyboardType = TextInputType.text}) {
     return IndustrialTextField(
       label: label,
       controller: controller,
-      keyboardType: TextInputType.text,
+      keyboardType: keyboardType,
     );
   }
 
@@ -223,188 +190,31 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ana İçerik (İki Kolon)
+            // Ana İçerik (Tek Kolon Ortalanmış)
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // SOL KOLON: FORM (Karot Logu, Kuyu No, Metraj)
-                  Expanded(
-                    flex: 1,
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTextField('Kuyu No', _kuyuNoController),
-                            const SizedBox(height: 24),
-                            // Metraj Alanı
-                            const Text(
-                              'Metraj',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF046464)),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: IndustrialTextField(
-                                    controller: _metrajBaslangicController,
-                                    label: '',
-                                    hintText: 'Başlangıç',
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                                  child: Text(
-                                    '-',
-                                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: IndustrialTextField(
-                                    controller: _metrajBitisController,
-                                    label: '',
-                                    hintText: 'Bitiş',
-                                    keyboardType: TextInputType.number,
-                                    textInputAction: TextInputAction.done,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+              child: Center(
+                child: SizedBox(
+                  width: 800,
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(48.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildTextField('Elmas Numarası', _elmasNoController),
+                          const SizedBox(height: 24),
+                          _buildTextField('Boru Adedi', _boruAdediController, keyboardType: TextInputType.number),
+                          const SizedBox(height: 24),
+                          _buildTextField('Boru Metrajı (m)', _boruMetrajController, keyboardType: TextInputType.number),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 32),
-                  // SAĞ KOLON: GÖRSELLER
-                  Expanded(
-                    flex: 1,
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.camera_alt_outlined, color: Color(0xFF046464)),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Karot Fotoğrafı',
-                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  '${_images.length} fotoğraf',
-                                  style: const TextStyle(color: Colors.grey, fontSize: 16),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () {}, // Fotoğraf özelliği iptal edildi (sadece görsel)
-                                icon: const Icon(Icons.camera_alt_outlined),
-                                label: const Text('Fotoğraf Çek'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.black87,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  side: const BorderSide(color: Colors.grey),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8F9FA),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: _images.isEmpty
-                                    ? const Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.cloud_upload_outlined, size: 64, color: Colors.grey),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              'Henüz fotoğraf eklenmedi',
-                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Birden fazla fotoğraf seçebilirsiniz.',
-                                              style: TextStyle(color: Colors.grey),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : GridView.builder(
-                                        padding: const EdgeInsets.all(12),
-                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 2,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                        ),
-                                        itemCount: _images.length,
-                                        itemBuilder: (context, index) {
-                                          return Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: Image.file(
-                                                  File(_images[index].path),
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                              Positioned(
-                                                top: 4,
-                                                right: 4,
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _images.removeAt(index);
-                                                    });
-                                                  },
-                                                  child: Container(
-                                                    decoration: const BoxDecoration(
-                                                      color: Colors.black54,
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    padding: const EdgeInsets.all(4),
-                                                    child: const Icon(Icons.close, color: Colors.white, size: 16),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -416,12 +226,12 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
                 child: ElevatedButton.icon(
                   onPressed: _submitReport,
                   icon: const Icon(Icons.send),
-                  label: const Text('Gönder'),
+                  label: const Text('Raporu Gönder'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF046464),
                     foregroundColor: Colors.white,
-                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     padding: const EdgeInsets.symmetric(vertical: 20),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 4,
                   ),
@@ -437,10 +247,9 @@ class _CoreLogTabState extends State<CoreLogTab> with AutomaticKeepAliveClientMi
 
   void _clearFormAndResetStatus() {
     setState(() {
-      _images.clear();
-      _kuyuNoController.clear();
-      _metrajBaslangicController.clear();
-      _metrajBitisController.clear();
+      _elmasNoController.clear();
+      _boruAdediController.clear();
+      _boruMetrajController.clear();
     });
     context.read<ReportProvider>().resetStatus();
   }

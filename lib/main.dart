@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vtm_tablet/providers/alert_provider.dart';
 import 'package:vtm_tablet/providers/data_provider.dart';
 import 'package:vtm_tablet/providers/report_provider.dart';
+import 'package:vtm_tablet/providers/shift_form_provider.dart';
 import 'package:vtm_tablet/providers/wakelock_provider.dart';
 import 'package:vtm_tablet/services/udp_service.dart';
 import 'package:vtm_tablet/services/mqtt_service.dart';
@@ -13,8 +14,9 @@ import 'package:vtm_tablet/ui/tabs/config_tab.dart';
 import 'package:vtm_tablet/ui/tabs/digital_tab.dart';
 import 'package:vtm_tablet/ui/tabs/fault_report_tab.dart';
 import 'package:vtm_tablet/ui/tabs/core_log_tab.dart';
-import 'package:vtm_tablet/ui/tabs/karotiyer_tab.dart';
+import 'package:vtm_tablet/ui/tabs/malzeme_tab.dart';
 import 'package:vtm_tablet/ui/tabs/shift_report_tab.dart';
+import 'package:vtm_tablet/ui/tabs/personnel_report_tab.dart';
 import 'package:vtm_tablet/ui/tabs/dtc_tab.dart';
 import 'package:vtm_tablet/ui/tabs/home_tab.dart';
 import 'package:vtm_tablet/ui/tabs/report_tab.dart';
@@ -87,6 +89,10 @@ Future<void> main() async {
             mqttService,
           ),
         ),
+
+        ChangeNotifierProvider<ShiftFormProvider>(
+          create: (_) => ShiftFormProvider(),
+        ),
         ChangeNotifierProvider<WakelockProvider>(
           create: (_) => WakelockProvider(),
           lazy: false, // Uygulama başlar başlamaz çalışsın
@@ -142,7 +148,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'VTM-16'),
+      home: MyHomePage(key: homeKey, title: 'VTM-16'),
     );
   }
 }
@@ -162,10 +168,12 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+final GlobalKey<MyHomePageState> homeKey = GlobalKey<MyHomePageState>();
+
+class MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _updateTimer;
@@ -181,8 +189,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     'Motor Verileri',
     'Arıza Raporu',
     'Karot Bilgileri',
-    'Karotiyer Bilgileri',
-    'Vardiya Raporu',
+    'Vardiya Raporu 1/3',
+    'Vardiya Raporu 2/3',
+    'Vardiya Raporu 3/3',
     'Hata Kodları (DTC)',
     'Konfigürasyon',
     // 'Debug Ekranı',
@@ -197,12 +206,22 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     const CanBusTab(),
     const FaultReportTab(),
     const CoreLogTab(),
-    const KarotiyerTab(),
+    const PersonnelReportTab(),
+    const MalzemeTab(),
     const ShiftReportTab(),
     const DtcTab(),
     const ConfigTab(),
     // const DebugViewTab(),
   ];
+
+  void goToPage(int index) {
+    if (mounted) {
+      setState(() {
+        _selectedIndex = index;
+      });
+      _pageController.jumpToPage(index);
+    }
+  }
 
   @override
   void initState() {

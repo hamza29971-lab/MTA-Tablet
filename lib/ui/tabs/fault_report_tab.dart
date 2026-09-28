@@ -76,6 +76,8 @@ class _FaultReportTabState extends State<FaultReportTab> with AutomaticKeepAlive
       faultMeter: dp.teslimAlinanMetraj ?? 0.0,
       bolgeAdi: dp.bolgeAdi ?? '',
       teslimAlinanMetraj: dp.teslimAlinanMetraj ?? 0.0,
+      tijAdedi: dp.tijAdedi ?? 0.0,
+      morsetUstu: dp.morsetUstu ?? 0.0,
     );
 
     final reportProvider = context.read<ReportProvider>();

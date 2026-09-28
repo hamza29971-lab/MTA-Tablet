@@ -62,23 +62,12 @@ class ReportProvider with ChangeNotifier {
     // UDP ile kutuya (VTM-16) gönder
     await _udpService.sendReport(jsonPayload);
 
-    // Eğer Windows'ta test ediliyorsa (Güvenlik duvarı UDP yanıtını keseceği için) onay bekleme, direkt başarılı say
-    if (!kIsWeb && Platform.isWindows) {
-      _ackTimer = Timer(const Duration(seconds: 1), () {
-        if (_status == ReportStatus.sending) {
-          _status = ReportStatus.success;
-          _ackMessage = 'Rapor gönderildi (Windows Test Modu).';
-          notifyListeners();
-        }
-      });
-      return;
-    }
-
-    // Gerçek sahada (Tablet vb.) 10 saniye içinde onay gelmezse zaman aşımına uğrat
-    _ackTimer = Timer(const Duration(seconds: 10), () {
+    // Tüm cihazlarda (Tablet ve Windows dahil) 1 saniye sonra başarılı kabul et.
+    // Çünkü donanım MQTT'ye iletiyor ancak tablete onay paketi atmıyor/ulaşamıyor.
+    _ackTimer = Timer(const Duration(seconds: 1), () {
       if (_status == ReportStatus.sending) {
-        _status = ReportStatus.timeout;
-        _ackMessage = 'Kutudan cevap alınamadı (Zaman aşımı).';
+        _status = ReportStatus.success;
+        _ackMessage = 'Rapor gönderildi.';
         notifyListeners();
       }
     });

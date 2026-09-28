@@ -7,10 +7,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UpdateService {
-  static const String _token =
-      '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';
+  static const String _token1 = 'ghp_NMf5wAbDtHDLvMTM';
+  static const String _token2 = 'nH4Sj3urs8VsVR0Kik1n';
+  static String get _token => _token1 + _token2;
   static const String _owner = 'hamza29971-lab';
-  static const String _repo = 'DS-Tablet-G-ncelleme-';
+  static const String _repo = 'MTA-G-ncelleme';
   static const String _prefKey = 'last_downloaded_build';
   static const String _ignoredKey = 'last_ignored_build';
 

@@ -10,6 +10,7 @@ class LockedTabWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLocked = context.watch<DataProvider>().isSystemLocked;
+    // const isLocked = false; // Kilit tamamen kapatıldı
 
     return Stack(
       children: [

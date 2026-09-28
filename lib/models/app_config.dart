@@ -75,14 +75,14 @@ class AppConfig {
     Map<String, GaugeConfig> configs = {
       // --- ANALOG GİRİŞLER (16 Adet) ---
       'analog_0': GaugeConfig(id: 'analog_0', label: 'ANA POMPA BASINCI', unit: 'Bar', minValue: 0, maxValue: 340, warningValue: 250, criticalValue: 300),
-      'analog_1': GaugeConfig(id: 'analog_1', label: 'SERVİS & ÇAMUR POMPA BASINCI', unit: 'Bar', minValue: 0, maxValue: 250, warningValue: 170, criticalValue: 200),
-      'analog_2': GaugeConfig(id: 'analog_2', label: 'SERVİS POMPA BASINCI', unit: 'Bar', minValue: 0, maxValue: 250, warningValue: 185, criticalValue: 200),
-      'analog_3': GaugeConfig(id: 'analog_3', label: 'BASKI BASINCI', unit: 'Bar', minValue: 0, maxValue: 270, warningValue: 200, criticalValue: 245),
-      'analog_4': GaugeConfig(id: 'analog_4', label: 'ASKI BASINCI', unit: 'Bar', minValue: 0, maxValue: 270, warningValue: 200, criticalValue: 240),
-      'analog_5': GaugeConfig(id: 'analog_5', label: 'MORSET YAĞLAMA', unit: 'Bar', minValue: 0, maxValue: 50, warningValue: 15, criticalValue: 25),
-      'analog_6': GaugeConfig(id: 'analog_6', label: 'ANA VİNÇ ÇEKME KUVVETİ', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 200, criticalValue: 250),
-      'analog_7': GaugeConfig(id: 'analog_7', label: 'ROTASYON TORK', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 250, criticalValue: 270),
-      'analog_8': GaugeConfig(id: 'analog_8', label: 'WİRELİNE VİNÇ', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 180, criticalValue: 190),
+      'analog_1': GaugeConfig(id: 'analog_1', label: 'SERVİS POMPA BASINCI', unit: 'Bar', minValue: 0, maxValue: 250, warningValue: 185, criticalValue: 200),
+      'analog_2': GaugeConfig(id: 'analog_2', label: 'SERVİS & ÇAMUR POMPA BASINCI', unit: 'Bar', minValue: 0, maxValue: 250, warningValue: 170, criticalValue: 200),
+      'analog_3': GaugeConfig(id: 'analog_3', label: 'ROTASYON TORK', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 250, criticalValue: 270),
+      'analog_4': GaugeConfig(id: 'analog_4', label: 'BASKI BASINCI', unit: 'Bar', minValue: 0, maxValue: 270, warningValue: 200, criticalValue: 245),
+      'analog_5': GaugeConfig(id: 'analog_5', label: 'ASKI BASINCI', unit: 'Bar', minValue: 0, maxValue: 270, warningValue: 200, criticalValue: 240),
+      'analog_6': GaugeConfig(id: 'analog_6', label: 'WİRELİNE VİNÇ', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 180, criticalValue: 190),
+      'analog_7': GaugeConfig(id: 'analog_7', label: 'ANA VİNÇ', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 200, criticalValue: 250),
+      'analog_8': GaugeConfig(id: 'analog_8', label: 'MORSET YAĞLAMA', unit: 'Bar', minValue: 0, maxValue: 50, warningValue: 15, criticalValue: 25),
       'analog_9': GaugeConfig(id: 'analog_9', label: 'ÇAMUR SU BASINCI', unit: 'Bar', minValue: 0, maxValue: 320, warningValue: 170, criticalValue: 200),
       'analog_10': GaugeConfig(id: 'analog_10', label: 'ROTASYON İLERLEME', unit: '', minValue: 0, maxValue: 350, warningValue: 330, criticalValue: 340),
       'analog_11': GaugeConfig(id: 'analog_11', label: 'SU LİTRE', unit: '', minValue: 0, maxValue: 15000, warningValue: 10000, criticalValue: 12000),
@@ -124,10 +124,10 @@ class AppConfig {
       towerRollAnalogIndex: 14,     // analog_14 = Kule Roll
       towerPitchAnalogIndex: 15,    // analog_15 = Kule Pitch
       homePageGaugeIds: [
-        'analog_7', // Rotasyon Tork
+        'analog_3', // Rotasyon Tork
         'aux_0', // Rotasyon Devir
         'analog_10', // Rotasyon İlerleme
-        'analog_4', // Askı Basıncı
+        'analog_5', // Askı Basıncı
         'analog_9', // Çamur Su Basıncı
         'analog_11', // Su Litre
       ],
@@ -147,16 +147,14 @@ class AppConfig {
         final savedGauge = GaugeConfig.fromJson(savedValueJson);
         final defaultGauge = defaultConfig.gaugeConfigs[key]!;
         
-        // ZORUNLU GÜNCELLEME: İsimleri ve üniteleri kayıtlıdan al, ancak
-        // Sınır değerlerini HER ZAMAN koddan (varsayılan) al!
+        // ZORUNLU GÜNCELLEME: Sıralama tamamen değiştiği için
+        // eski cihaz hafızasından gelen isimlerin ortalığı karıştırmaması adına
+        // etiketi (label) ve sınır değerlerini HER ZAMAN koddan (varsayılan) al!
+        savedGauge.label = defaultGauge.label;
         savedGauge.minValue = defaultGauge.minValue;
         savedGauge.maxValue = defaultGauge.maxValue;
         savedGauge.warningValue = defaultGauge.warningValue;
         savedGauge.criticalValue = defaultGauge.criticalValue;
-
-        if (key == 'analog_7' && savedGauge.label.toLowerCase().contains('pilot')) {
-          savedGauge.label = 'Rotasyon Tork';
-        }
 
         defaultConfig.gaugeConfigs[key] = savedGauge;
       }

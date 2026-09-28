@@ -606,9 +606,13 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
   final _operatorNumberController = TextEditingController();
   final _faultTextController = TextEditingController();
   final _faultMeterController = TextEditingController(); 
+  
+  // Yeni eklenen alanlar
+  final _tijAdediController = TextEditingController();
+  final _morsetUstuController = TextEditingController();
 
   String? _selectedTeam;
-  final List<String> _teamOptions = ['AW 1.5M', 'AW 3M', 'BW 1.5M', 'BW 3M', 'NQ 1.5M', 'NQ 3M', 'HQ 1.5M', 'HQ 3M', 'PQ 1.5M', 'PQ 3M'];
+  final List<String> _teamOptions = ['NQ', 'HQ', 'PQ'];
 
   @override
   void initState() {
@@ -636,6 +640,8 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
     _operatorNumberController.dispose();
     _faultTextController.dispose();
     _faultMeterController.dispose();
+    _tijAdediController.dispose();
+    _morsetUstuController.dispose();
     super.dispose();
   }
 
@@ -646,6 +652,8 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
     _operatorNumberController.clear();
     _faultTextController.clear();
     _faultMeterController.clear();
+    _tijAdediController.clear();
+    _morsetUstuController.clear();
     setState(() {
       _selectedTeam = null;
     });
@@ -660,10 +668,14 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
       final operatorNumber = _operatorNumberController.text;
       final teamName = _selectedTeam!;
 
+      final tijAdediValue = double.tryParse(_tijAdediController.text.replaceAll(',', '.')) ?? 0.0;
+      final morsetUstuValue = double.tryParse(_morsetUstuController.text.replaceAll(',', '.')) ?? 0.0;
+
       // fault_text'i JSON formatında sar (sunucu formatıyla uyumluluk için)
       final faultTextJson = jsonEncode({
-        'Test Tipi': 'Rapor Gönder',
-        'Arıza Açıklaması': _faultTextController.text,
+        'Test Type': 'Send Report',
+        'rod_cnt': tijAdediValue,
+        'mors_wat': morsetUstuValue,
       });
 
       final faultMeterValue = double.tryParse(_faultMeterController.text.replaceAll(',', '.')) ?? 0.0;
@@ -678,6 +690,8 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
         // Sadece Arıza Raporunda: fault_text'in yanına "Bölge Adı", fault_meter'ın yanına "Teslim Alınan Metraj"
         bolgeAdi: _faultTextController.text,
         teslimAlinanMetraj: faultMeterValue,
+        tijAdedi: tijAdediValue,
+        morsetUstu: morsetUstuValue,
       );
       
       final dp = context.read<DataProvider>();
@@ -767,6 +781,8 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                               teamName: teamName,
                               bolgeAdi: bolgeAdiValue,
                               teslimAlinanMetraj: faultMeterValue,
+                              tijAdedi: tijAdediValue,
+                              morsetUstu: morsetUstuValue,
                             );
                       } else {
                         // Sistem açıkken gönderilen rapor onaylandı:
@@ -898,84 +914,140 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
             child: Container(
               alignment: Alignment.center,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: const BoxConstraints(maxWidth: double.infinity), // Tam ekrana yayılması için
                 child: SizedBox(
                   height: double.infinity,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0), // Dikey padding artırıldı
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildTextField(_operatorNameController, 'Operatör İsmi'),
-                          _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
-                          _buildTextField(_kuyuNameController, 'Kuyu Adı'),
-                          _buildTextField(_faultTextController, 'Bölge Adı', required: false),
-                          DropdownButtonFormField<String>(
-                          value: _selectedTeam,
-                          decoration: const InputDecoration(
-                            labelText: 'Takım İsmi',
-                            border: OutlineInputBorder(),
-                          ),
-                          hint: const Text('Bir takım seçin'),
-                          items: _teamOptions.map((String team) {
-                            return DropdownMenuItem<String>(
-                              value: team,
-                              child: Text(team),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedTeam = newValue;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Lütfen bir takım seçin';
-                            }
-                            return null;
-                          },
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Sol Sütun
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _buildTextField(_operatorNameController, 'Operatör İsmi'),
+                                      _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
+                                      _buildTextField(_kuyuNameController, 'Kuyu Adı'),
+                                      _buildTextField(_faultTextController, 'Bölge Adı', required: false, action: TextInputAction.done),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 32),
+                                // Sağ Sütun
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      DropdownButtonFormField<String>(
+                                        value: _selectedTeam,
+                                        decoration: InputDecoration(
+                                          labelText: 'Takım İsmi',
+                                          labelStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF046464)),
+                                          filled: true,
+                                          fillColor: const Color(0xFFF8F9FA),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Colors.grey.shade300),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                        ),
+                                        hint: const Text('Bir takım seçin'),
+                                        items: _teamOptions.map((String team) {
+                                          return DropdownMenuItem<String>(
+                                            value: team,
+                                            child: Text(team),
+                                          );
+                                        }).toList(),
+                                        onChanged: (String? newValue) {
+                                          setState(() {
+                                            _selectedTeam = newValue;
+                                          });
+                                        },
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Lütfen bir takım seçin';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      TextFormField(
+                                        controller: _faultMeterController,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        textInputAction: TextInputAction.next,
+                                        decoration: InputDecoration(
+                                          labelText: 'Teslim Alınan Metraj',
+                                          labelStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF046464)),
+                                          filled: true,
+                                          fillColor: const Color(0xFFF8F9FA),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Colors.grey.shade300),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Bu alan boş bırakılamaz';
+                                          }
+                                          if (double.tryParse(value) == null) {
+                                            return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      _buildTextField(_tijAdediController, 'Tij Adedi', isNumber: true),
+                                      _buildTextField(_morsetUstuController, 'Morset Üstü', isNumber: true),
+                                ],
+                              ),
+                            ), // Added this closing bracket for Expanded(Sağ Sütun)
+                          ],
                         ),
-                        TextFormField(
-                          controller: _faultMeterController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          textInputAction: TextInputAction.done,
-                          decoration: const InputDecoration(
-                            labelText: 'Teslim Alınan Metraj',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Bu alan boş bırakılamaz';
-                            }
-                            if (double.tryParse(value) == null) {
-                              return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
-                            }
-                            return null;
-                          },
-                        ),
-                        ElevatedButton(
-                          onPressed: _submitReport,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: const Color(0xFF046464),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text(
-                            'RAPORU GÖNDER',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      ), // Added this closing bracket for Expanded(Outer)
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 250,
+                          child: ElevatedButton.icon(
+                            onPressed: _submitReport,
+                            icon: const Icon(Icons.send),
+                            label: const Text('Raporu Gönder'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF046464),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 4,
+                            ),
                           ),
                         ),
-                      ],
-                    ), // Column
-                  ), // Form
-                ), // Padding
-              ), // SizedBox
-            ), // ConstrainedBox
-          ), // Container
-        ), // Expanded
+                      ),
+                    ], // Closes children of Form's Column
+                  ), // Closes Column
+                ), // Form
+              ), // Padding
+            ), // SizedBox
+          ), // ConstrainedBox
+        ), // Container
+      ), // Expanded
       ], // Column children
         ),
       ),
@@ -991,7 +1063,18 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF046464)),
+        filled: true,
+        fillColor: const Color(0xFFF8F9FA),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       ),
       validator: (value) {
         // Sadece 'required' true ise boş olup olmadığını kontrol et.

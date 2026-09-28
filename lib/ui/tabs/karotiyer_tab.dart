@@ -102,6 +102,8 @@ class _KarotiyerTabState extends State<KarotiyerTab> with AutomaticKeepAliveClie
       faultMeter: dp.teslimAlinanMetraj ?? 0.0,
       bolgeAdi: dp.bolgeAdi ?? '',
       teslimAlinanMetraj: dp.teslimAlinanMetraj ?? 0.0,
+      tijAdedi: dp.tijAdedi ?? 0.0,
+      morsetUstu: dp.morsetUstu ?? 0.0,
     );
 
     reportProvider.sendReport(reportData);
@@ -271,11 +273,9 @@ class _KarotiyerTabState extends State<KarotiyerTab> with AutomaticKeepAliveClie
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF046464),
                     foregroundColor: Colors.white,
-                    textStyle: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 4,
                   ),
                 ),

@@ -97,6 +97,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/device_data.dart';
 import '../services/udp_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Bağlantı durumunu temsil eden enum
 enum ConnectionStatus { connected, disconnected }
@@ -122,6 +123,8 @@ class DataProvider with ChangeNotifier {
   String? _teamName;
   String? _bolgeAdi;
   double? _teslimAlinanMetraj;
+  double? _tijAdedi;
+  double? _morsetUstu;
   bool _isSystemLocked = true; // Added for start screen locking
 
   String? get operatorName => _operatorName;
@@ -130,7 +133,30 @@ class DataProvider with ChangeNotifier {
   String? get teamName => _teamName;
   String? get bolgeAdi => _bolgeAdi;
   double? get teslimAlinanMetraj => _teslimAlinanMetraj;
+  double? get tijAdedi => _tijAdedi;
+  double? get morsetUstu => _morsetUstu;
   bool get isSystemLocked => _isSystemLocked;
+
+  // Provider oluşturulurken UdpService'i alacak
+  DataProvider(this._udpService) {
+    _loadOperatorInfo();
+  }
+
+  Future<void> _loadOperatorInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    _operatorName = prefs.getString('operatorName');
+    _registrationNo = prefs.getString('registrationNo');
+    _wellNo = prefs.getString('wellNo');
+    _teamName = prefs.getString('teamName');
+    _bolgeAdi = prefs.getString('bolgeAdi');
+    _teslimAlinanMetraj = prefs.getDouble('teslimAlinanMetraj');
+    _tijAdedi = prefs.getDouble('tijAdedi');
+    _morsetUstu = prefs.getDouble('morsetUstu');
+    if (_operatorName != null && _operatorName!.isNotEmpty) {
+      _isSystemLocked = false;
+    }
+    notifyListeners();
+  }
 
   void setOperatorInfo(
     String name,
@@ -139,26 +165,52 @@ class DataProvider with ChangeNotifier {
     String teamName = '',
     String bolgeAdi = '',
     double teslimAlinanMetraj = 0.0,
-  }) {
+    double tijAdedi = 0.0,
+    double morsetUstu = 0.0,
+  }) async {
     _operatorName = name;
     _registrationNo = regNo;
     _wellNo = well;
     _teamName = teamName;
     _bolgeAdi = bolgeAdi;
     _teslimAlinanMetraj = teslimAlinanMetraj;
+    _tijAdedi = tijAdedi;
+    _morsetUstu = morsetUstu;
     _isSystemLocked = false;
     notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('operatorName', name);
+    await prefs.setString('registrationNo', regNo);
+    await prefs.setString('wellNo', well);
+    await prefs.setString('teamName', teamName);
+    await prefs.setString('bolgeAdi', bolgeAdi);
+    await prefs.setDouble('teslimAlinanMetraj', teslimAlinanMetraj);
+    await prefs.setDouble('tijAdedi', tijAdedi);
+    await prefs.setDouble('morsetUstu', morsetUstu);
   }
 
-  void clearOperatorInfo() {
+  void clearOperatorInfo() async {
     _operatorName = null;
     _registrationNo = null;
     _wellNo = null;
     _teamName = null;
     _bolgeAdi = null;
     _teslimAlinanMetraj = null;
+    _tijAdedi = null;
+    _morsetUstu = null;
     _isSystemLocked = true;
     notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('operatorName');
+    await prefs.remove('registrationNo');
+    await prefs.remove('wellNo');
+    await prefs.remove('teamName');
+    await prefs.remove('bolgeAdi');
+    await prefs.remove('teslimAlinanMetraj');
+    await prefs.remove('tijAdedi');
+    await prefs.remove('morsetUstu');
   }
 
   // --- MERKEZİ TEST KİLİDİ ---
@@ -186,8 +238,6 @@ class DataProvider with ChangeNotifier {
     return _activeTestName != null && _activeTestName != myTestName;
   }
   // ---------------------------
-
-  DataProvider(this._udpService);
 
   void startListener() {
     if (_isListening) return;

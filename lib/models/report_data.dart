@@ -12,6 +12,10 @@ class ReportData {
   // Sadece Arıza Raporu (report_tab) için opsiyonel ekstra alanlar
   final String? bolgeAdi;
   final double? teslimAlinanMetraj;
+  
+  // Ana giriş ekranından alınan yeni alanlar
+  final double? tijAdedi;
+  final double? morsetUstu;
 
   ReportData({
     required this.operatorName,
@@ -22,6 +26,8 @@ class ReportData {
     required this.faultMeter,
     this.bolgeAdi,
     this.teslimAlinanMetraj,
+    this.tijAdedi,
+    this.morsetUstu,
   });
 
   // Nesneyi Map'e çevirir (MQTT için kullanılır)
@@ -41,6 +47,14 @@ class ReportData {
     // "Teslim Alınan Metraj" → fault_meter'ın hemen yanına (altına)
     if (teslimAlinanMetraj != null) {
       map['deliv_m'] = teslimAlinanMetraj;
+    }
+    
+    // Yeni eklenen alanların MQTT mappingi (Vardiya verileriyle karışmaması için deliv_ öneki)
+    if (tijAdedi != null) {
+      map['deliv_rod_cnt'] = tijAdedi;
+    }
+    if (morsetUstu != null) {
+      map['deliv_mors_wat'] = morsetUstu;
     }
     return map;
   }
