@@ -20,6 +20,8 @@ import 'package:vtm_tablet/ui/tabs/personnel_report_tab.dart';
 import 'package:vtm_tablet/ui/tabs/dtc_tab.dart';
 import 'package:vtm_tablet/ui/tabs/home_tab.dart';
 import 'package:vtm_tablet/ui/tabs/report_tab.dart';
+import 'package:vtm_tablet/ui/tabs/maneuver_operation_tab.dart';
+import 'package:vtm_tablet/ui/tabs/well_completion_tab.dart';
 // import 'ui/tabs/debug_view_tab.dart';
 import 'package:flutter/services.dart';
 import 'package:vtm_tablet/providers/config_provider.dart';
@@ -189,9 +191,11 @@ class MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     'Motor Verileri',
     'Arıza Raporu',
     'Karot Bilgileri',
+    'Manevra Operasyon Sayfası',
     'Vardiya Raporu 1/3',
     'Vardiya Raporu 2/3',
     'Vardiya Raporu 3/3',
+    'Kuyu Bitiş Sayfası',
     'Hata Kodları (DTC)',
     'Konfigürasyon',
     // 'Debug Ekranı',
@@ -206,9 +210,11 @@ class MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     const CanBusTab(),
     const FaultReportTab(),
     const CoreLogTab(),
+    const ManeuverOperationTab(),
     const PersonnelReportTab(),
     const MalzemeTab(),
     const ShiftReportTab(),
+    const WellCompletionTab(),
     const DtcTab(),
     const ConfigTab(),
     // const DebugViewTab(),

@@ -606,6 +606,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
   final _operatorNumberController = TextEditingController();
   final _faultTextController = TextEditingController();
   final _faultMeterController = TextEditingController(); 
+  final _kampAdiController = TextEditingController();
   
   // Yeni eklenen alanlar
   final _tijAdediController = TextEditingController();
@@ -618,6 +619,16 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
   void initState() {
     super.initState();
     // context.read<ReportProvider>().addListener(_onReportStatusChanged);
+    
+    // Kamp adı vs DataProvider'dan yüklenmişse TextField'a aktar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final dp = context.read<DataProvider>();
+        if (dp.kampAdi != null && dp.kampAdi!.isNotEmpty) {
+          _kampAdiController.text = dp.kampAdi!;
+        }
+      }
+    });
   }
 
   // void _onReportStatusChanged() {
@@ -642,6 +653,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
     _faultMeterController.dispose();
     _tijAdediController.dispose();
     _morsetUstuController.dispose();
+    _kampAdiController.dispose();
     super.dispose();
   }
 
@@ -654,6 +666,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
     _faultMeterController.clear();
     _tijAdediController.clear();
     _morsetUstuController.clear();
+    _kampAdiController.clear();
     setState(() {
       _selectedTeam = null;
     });
@@ -689,6 +702,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
         faultMeter: faultMeterValue,
         // Sadece Arıza Raporunda: fault_text'in yanına "Bölge Adı", fault_meter'ın yanına "Teslim Alınan Metraj"
         bolgeAdi: _faultTextController.text,
+        kampAdi: _kampAdiController.text,
         teslimAlinanMetraj: faultMeterValue,
         tijAdedi: tijAdediValue,
         morsetUstu: morsetUstuValue,
@@ -698,6 +712,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
       final bool wasLocked = dp.isSystemLocked;
       // Rapor onaylanırsa kilidi açmak için gereken bilgiler burada saklanır.
       final String bolgeAdiValue = _faultTextController.text;
+      final String kampAdiValue = _kampAdiController.text;
 
       // DİKKAT: Kilit BURADA açılmaz.
       // "Arıza Raporu", "Karot Bilgileri", "Karotiyer Bilgileri" ve
@@ -780,6 +795,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                               kuyuName,
                               teamName: teamName,
                               bolgeAdi: bolgeAdiValue,
+                              kampAdi: kampAdiValue,
                               teslimAlinanMetraj: faultMeterValue,
                               tijAdedi: tijAdediValue,
                               morsetUstu: morsetUstuValue,
@@ -806,6 +822,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final dp = context.watch<DataProvider>();
     return Align(
       alignment: Alignment.topCenter,
       child: KeyboardScrollableWrapper(
@@ -922,32 +939,20 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
+                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                // Sol Sütun
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _buildTextField(_operatorNameController, 'Operatör İsmi'),
-                                      _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true),
-                                      _buildTextField(_kuyuNameController, 'Kuyu Adı'),
-                                      _buildTextField(_faultTextController, 'Bölge Adı', required: false, action: TextInputAction.done),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 32),
-                                // Sağ Sütun
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      DropdownButtonFormField<String>(
+                                // Satır 1: Operatör İsmi | Takım İsmi
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildTextField(_operatorNameController, 'Operatör İsmi')),
+                                    const SizedBox(width: 32),
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
                                         value: _selectedTeam,
                                         decoration: InputDecoration(
                                           labelText: 'Takım İsmi',
@@ -962,7 +967,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                                             borderRadius: BorderRadius.circular(12),
                                             borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
                                           ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 26),
                                         ),
                                         hint: const Text('Bir takım seçin'),
                                         items: _teamOptions.map((String team) {
@@ -972,9 +977,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                                           );
                                         }).toList(),
                                         onChanged: (String? newValue) {
-                                          setState(() {
-                                            _selectedTeam = newValue;
-                                          });
+                                          setState(() { _selectedTeam = newValue; });
                                         },
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
@@ -983,7 +986,16 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                                           return null;
                                         },
                                       ),
-                                      TextFormField(
+                                    ),
+                                  ],
+                                ),
+                                // Satır 2: Operatör Numarası | Teslim Alınan Metraj
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildTextField(_operatorNumberController, 'Operatör Numarası', isNumber: true)),
+                                    const SizedBox(width: 32),
+                                    Expanded(
+                                      child: TextFormField(
                                         controller: _faultMeterController,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                         textInputAction: TextInputAction.next,
@@ -1000,26 +1012,44 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
                                             borderRadius: BorderRadius.circular(12),
                                             borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
                                           ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 26),
                                         ),
                                         validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return 'Bu alan boş bırakılamaz';
-                                          }
-                                          if (double.tryParse(value) == null) {
-                                            return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
-                                          }
+                                          if (value == null || value.isEmpty) return 'Bu alan boş bırakılamaz';
+                                          if (double.tryParse(value) == null) return 'Lütfen geçerli bir sayı girin (örn: 12.5)';
                                           return null;
                                         },
                                       ),
-                                      _buildTextField(_tijAdediController, 'Tij Adedi', isNumber: true),
-                                      _buildTextField(_morsetUstuController, 'Morset Üstü', isNumber: true),
-                                ],
-                              ),
-                            ), // Added this closing bracket for Expanded(Sağ Sütun)
-                          ],
-                        ),
-                      ), // Added this closing bracket for Expanded(Outer)
+                                    ),
+                                  ],
+                                ),
+                                // Satır 3: Kuyu Adı | Tij Adedi
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildTextField(_kuyuNameController, 'Kuyu Adı')),
+                                    const SizedBox(width: 32),
+                                    Expanded(child: _buildTextField(_tijAdediController, 'Tij Adedi', isNumber: true)),
+                                  ],
+                                ),
+                                // Satır 4: Bölge Adı | Morset Üstü
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildTextField(_faultTextController, 'Bölge Adı', required: false)),
+                                    const SizedBox(width: 32),
+                                    Expanded(child: _buildTextField(_morsetUstuController, 'Morset Üstü', isNumber: true)),
+                                  ],
+                                ),
+                                // Satır 5: Kamp Adı | (boş)
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildTextField(_kampAdiController, 'Kamp Adı', required: false, action: TextInputAction.done)),
+                                    const SizedBox(width: 32),
+                                    const Expanded(child: SizedBox()),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ), // Expanded(Outer)
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerRight,
@@ -1055,9 +1085,10 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
   }
 
 
-  Widget _buildTextField(TextEditingController controller, String label, {int maxLines = 1, bool isNumber = false, bool required = true, TextInputAction action = TextInputAction.next}) {
+  Widget _buildTextField(TextEditingController controller, String label, {int maxLines = 1, bool isNumber = false, bool required = true, TextInputAction action = TextInputAction.next, bool readOnly = false}) {
     return TextFormField(
       controller: controller,
+      readOnly: readOnly,
       maxLines: maxLines,
       textInputAction: action,
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
@@ -1074,7 +1105,7 @@ class _ReportTabState extends State<ReportTab> with AutomaticKeepAliveClientMixi
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF046464), width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 26),
       ),
       validator: (value) {
         // Sadece 'required' true ise boş olup olmadığını kontrol et.

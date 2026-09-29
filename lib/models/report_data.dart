@@ -11,6 +11,7 @@ class ReportData {
   final double faultMeter;
   // Sadece Arıza Raporu (report_tab) için opsiyonel ekstra alanlar
   final String? bolgeAdi;
+  final String? kampAdi;
   final double? teslimAlinanMetraj;
   
   // Ana giriş ekranından alınan yeni alanlar
@@ -25,6 +26,7 @@ class ReportData {
     required this.faultText,
     required this.faultMeter,
     this.bolgeAdi,
+    this.kampAdi,
     this.teslimAlinanMetraj,
     this.tijAdedi,
     this.morsetUstu,
@@ -42,6 +44,9 @@ class ReportData {
     // "Bölge Adı" → fault_text'in hemen yanına (altına)
     if (bolgeAdi != null) {
       map['region'] = bolgeAdi;
+    }
+    if (kampAdi != null) {
+      map['camp_name'] = kampAdi;
     }
     map['fault_meter'] = faultMeter;
     // "Teslim Alınan Metraj" → fault_meter'ın hemen yanına (altına)

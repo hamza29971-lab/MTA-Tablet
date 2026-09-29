@@ -122,6 +122,7 @@ class DataProvider with ChangeNotifier {
   String? _wellNo;
   String? _teamName;
   String? _bolgeAdi;
+  String? _kampAdi;
   double? _teslimAlinanMetraj;
   double? _tijAdedi;
   double? _morsetUstu;
@@ -132,6 +133,7 @@ class DataProvider with ChangeNotifier {
   String? get wellNo => _wellNo;
   String? get teamName => _teamName;
   String? get bolgeAdi => _bolgeAdi;
+  String? get kampAdi => _kampAdi;
   double? get teslimAlinanMetraj => _teslimAlinanMetraj;
   double? get tijAdedi => _tijAdedi;
   double? get morsetUstu => _morsetUstu;
@@ -149,6 +151,7 @@ class DataProvider with ChangeNotifier {
     _wellNo = prefs.getString('wellNo');
     _teamName = prefs.getString('teamName');
     _bolgeAdi = prefs.getString('bolgeAdi');
+    _kampAdi = prefs.getString('kampAdi');
     _teslimAlinanMetraj = prefs.getDouble('teslimAlinanMetraj');
     _tijAdedi = prefs.getDouble('tijAdedi');
     _morsetUstu = prefs.getDouble('morsetUstu');
@@ -164,6 +167,7 @@ class DataProvider with ChangeNotifier {
     String well, {
     String teamName = '',
     String bolgeAdi = '',
+    String kampAdi = '',
     double teslimAlinanMetraj = 0.0,
     double tijAdedi = 0.0,
     double morsetUstu = 0.0,
@@ -173,6 +177,7 @@ class DataProvider with ChangeNotifier {
     _wellNo = well;
     _teamName = teamName;
     _bolgeAdi = bolgeAdi;
+    _kampAdi = kampAdi;
     _teslimAlinanMetraj = teslimAlinanMetraj;
     _tijAdedi = tijAdedi;
     _morsetUstu = morsetUstu;
@@ -185,6 +190,7 @@ class DataProvider with ChangeNotifier {
     await prefs.setString('wellNo', well);
     await prefs.setString('teamName', teamName);
     await prefs.setString('bolgeAdi', bolgeAdi);
+    await prefs.setString('kampAdi', kampAdi);
     await prefs.setDouble('teslimAlinanMetraj', teslimAlinanMetraj);
     await prefs.setDouble('tijAdedi', tijAdedi);
     await prefs.setDouble('morsetUstu', morsetUstu);
@@ -196,6 +202,7 @@ class DataProvider with ChangeNotifier {
     _wellNo = null;
     _teamName = null;
     _bolgeAdi = null;
+    _kampAdi = null;
     _teslimAlinanMetraj = null;
     _tijAdedi = null;
     _morsetUstu = null;
@@ -208,6 +215,7 @@ class DataProvider with ChangeNotifier {
     await prefs.remove('wellNo');
     await prefs.remove('teamName');
     await prefs.remove('bolgeAdi');
+    await prefs.remove('kampAdi');
     await prefs.remove('teslimAlinanMetraj');
     await prefs.remove('tijAdedi');
     await prefs.remove('morsetUstu');
